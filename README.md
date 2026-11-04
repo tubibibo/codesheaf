@@ -1,0 +1,144 @@
+# 🌾 CodeSheaf — LLM Context Bundler
+
+[![CI](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml/badge.svg)](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/codesheaf-tools.codesheaf)](https://marketplace.visualstudio.com/items?itemName=codesheaf-tools.codesheaf)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/codesheaf-tools.codesheaf)](https://marketplace.visualstudio.com/items?itemName=codesheaf-tools.codesheaf)
+
+**Bundle files, selections and their import dependencies into LLM-ready
+context — right from your editor.** Zero runtime dependencies. Fully
+unit-tested core.
+
+[English](README.md) · [简体中文](README.zh-CN.md)
+
+---
+
+A _sheaf_ is a bundle of stalks tied together. CodeSheaf ties the exact code
+you're looking at — plus the local files it depends on — into one clean,
+paste-ready bundle for Claude, ChatGPT, Gemini, Cursor, or any AI assistant.
+
+Repo packers like [Repomix](https://github.com/yamadashy/repomix) answer
+_"how do I hand my whole repository to an LLM?"_ CodeSheaf answers the
+question you actually have mid-edit: **"give me this file / selection, plus
+exactly the local dependencies that matter."**
+
+## ✨ Features
+
+- 🎯 **Import-aware bundling** — follows local import closures
+  (TypeScript/JavaScript, Python, Java, Go, C/C++) to a configurable depth.
+  Third-party packages are excluded automatically because they don't exist
+  in your workspace.
+- 📋 **Everything is one command** — active file, current selection, or
+  multi-select files/folders in the Explorer (folders expand with
+  gitignore pruning).
+- 📊 **Live token meter** — the status bar shows a running estimate for the
+  active file or selection; every bundle reports its own estimate.
+- 📐 **Three output formats** — Markdown (fenced code blocks + file tree),
+  XML (CDATA-safe, attribute-escaped), and plain text.
+- 🛡️ **Safe picking** — honors `.gitignore` plus your exclude globs; skips
+  binaries and oversized files with a precise per-file reason; explicit
+  picks always win (you asked for that file, you get it).
+- 🔍 **Preview before you paste** — render the exact bundle into a read-only
+  editor instead of the clipboard.
+- 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
+  the core enforced by ESLint; 80 unit tests; ~96% statement coverage;
+  **zero runtime npm dependencies** (the .vsix is ~46 KB).
+
+## 🚀 Install
+
+**From VSIX** (no marketplace account needed):
+
+```bash
+npx @vscode/vsce package        # produces codesheaf-<version>.vsix
+code --install-extension codesheaf-1.0.0.vsix
+```
+
+**From source**:
+
+```bash
+git clone https://github.com/your-github-username/codesheaf.git
+cd codesheaf && npm install
+# Press F5 in VS Code to launch an Extension Development Host
+```
+
+## 📖 Usage
+
+1. Open a source file — watch the status bar: `$(sparkle) ~1.2k`.
+2. `Ctrl+Shift+P` → **CodeSheaf: Copy Active File + Import Dependencies**.
+3. Paste into your AI chat. The bundle arrives with a file tree, path
+   headers, language-tagged fences, and a token line.
+
+Full command and settings reference: [docs/user-guide.md](docs/user-guide.md).
+
+| Command                                  | Does                                                                 |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| `Copy Active File as Context`            | Active file (+ imports per settings).                                |
+| `Copy Active File + Import Dependencies` | Guarantees import depth ≥ 3.                                         |
+| `Copy Selection as Context`              | Just the selected lines (imports still resolved from the full file). |
+| `Preview Context Bundle (Active File)`   | Read-only preview instead of clipboard.                              |
+| `Copy as LLM Context`                    | Explorer multi-select; folders expand, ignore-pruned.                |
+
+## ⚙️ Settings (highlights)
+
+| Setting                       | Default                                    |
+| ----------------------------- | ------------------------------------------ |
+| `codesheaf.format`            | `markdown` (`xml`, `plain` also available) |
+| `codesheaf.maxImportDepth`    | `3` (0 disables import following)          |
+| `codesheaf.maxFileSizeKB`     | `256`                                      |
+| `codesheaf.respectGitignore`  | `true`                                     |
+| `codesheaf.exclude`           | build/lockfile globs                       |
+| `codesheaf.statusBar.enabled` | `true`                                     |
+
+## 🏗️ Architecture
+
+Hexagonal (ports & adapters) with an explicit application layer — the core
+never touches `vscode`, enforced by lint, so all logic is unit-testable in
+plain Node:
+
+```
+src/
+├── core/           # pure domain + services + ports (no vscode, no deps)
+│   ├── domain/     #   ContextBundle, BundleOptions, InputRef, ...
+│   ├── services/   #   BundleBuilder, ImportScanner, Formatter,
+│   │               #   IgnoreMatcher, TokenEstimator, TreeRenderer
+│   ├── ports/      #   FileSystem, Workspace, Clipboard, Config, ...
+│   └── utils/      #   comment strippers, binary sniff, globs
+├── application/    # use cases: copyAsContext, previewAsContext
+├── adapters/       # one adapter per port + command handlers + status bar
+├── composition/    # container.ts — the single composition root
+└── extension.ts    # activation/teardown only
+```
+
+Details and diagrams: [docs/architecture.md](docs/architecture.md) ·
+Decision log: [docs/adr/](docs/adr/) · Direction research:
+[docs/research.md](docs/research.md)
+
+## 🧑‍💻 Development
+
+```bash
+npm install
+npm run build      # typecheck + lint + test + compile
+npm run package    # + .vsix packaging
+npm run test:watch # fast feedback while hacking on the core
+```
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The
+architecture rules (core purity, zero runtime deps) are enforced in CI.
+
+## 🗺️ Roadmap
+
+- [ ] Additional language strategies (Rust, C#, Ruby) — one class each
+- [ ] Prompt templates (system-preamble / task wrapper)
+- [ ] Per-file token budgets with automatic trimming
+- [ ] Web/remote support audit
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 CodeSheaf Contributors
+
+## 🙏 Acknowledgments
+
+Inspired by the excellent CLI packers —
+[Repomix](https://github.com/yamadashy/repomix) and
+[code2prompt](https://github.com/mufeedvh/code2prompt) — which proved the
+direction; CodeSheaf brings it inside the editor.
