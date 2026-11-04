@@ -1,0 +1,184 @@
+{
+  "name": "codesheaf",
+  "displayName": "CodeSheaf — LLM Context Bundler",
+  "description": "Bundle files, selections and their import dependencies into LLM-ready context (Markdown / XML / plain text) with token estimates — right from your editor.",
+  "version": "1.0.0",
+  "publisher": "codesheaf-tools",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-github-username/codesheaf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-github-username/codesheaf/issues"
+  },
+  "homepage": "https://github.com/your-github-username/codesheaf#readme",
+  "keywords": [
+    "llm",
+    "ai",
+    "context",
+    "prompt",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "copy",
+    "bundler"
+  ],
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "engines": {
+    "vscode": "^1.96.0",
+    "node": ">=20"
+  },
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codesheaf.copyFile",
+        "title": "Copy Active File as Context",
+        "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.copyFileWithImports",
+        "title": "Copy Active File + Import Dependencies",
+        "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.copySelection",
+        "title": "Copy Selection as Context",
+        "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.previewBundle",
+        "title": "Preview Context Bundle (Active File)",
+        "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.copyFiles",
+        "title": "Copy as LLM Context",
+        "category": "CodeSheaf"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "codesheaf.copySelection",
+          "when": "editorHasSelection",
+          "group": "9_codesheaf"
+        },
+        {
+          "command": "codesheaf.copyFile",
+          "group": "9_codesheaf"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "codesheaf.copyFiles",
+          "group": "9_codesheaf"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodeSheaf",
+      "properties": {
+        "codesheaf.format": {
+          "type": "string",
+          "default": "markdown",
+          "enum": [
+            "markdown",
+            "xml",
+            "plain"
+          ],
+          "enumDescriptions": [
+            "Markdown with fenced code blocks (great for chat UIs)",
+            "XML with CDATA sections (structured, machine-parseable)",
+            "Plain text with separators (maximum compatibility)"
+          ],
+          "description": "Output format of the woven context bundle."
+        },
+        "codesheaf.includeLineNumbers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefix every code line with a `N | ` line-number marker."
+        },
+        "codesheaf.includeTree": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include a file tree of the bundled files at the top."
+        },
+        "codesheaf.maxImportDepth": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "How deep to follow import declarations when weaving. 0 disables import following."
+        },
+        "codesheaf.maxFileSizeKB": {
+          "type": "number",
+          "default": 256,
+          "minimum": 1,
+          "description": "Files larger than this size (in KiB) are skipped."
+        },
+        "codesheaf.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Honor `.gitignore` files in the workspace roots when picking files."
+        },
+        "codesheaf.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules/**",
+            "dist/**",
+            "out/**",
+            "build/**",
+            "coverage/**",
+            ".git/**",
+            "**/*.min.js",
+            "**/*.map",
+            "**/package-lock.json",
+            "**/pnpm-lock.yaml",
+            "**/yarn.lock"
+          ],
+          "description": "Extra exclude globs (gitignore syntax) applied on top of `.gitignore`."
+        },
+        "codesheaf.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the live token estimate in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "npm run typecheck && npm run lint && npm run test && npm run compile",
+    "package": "npm run build && vsce package",
+    "clean": "node ./scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "@types/vscode": "1.96.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "@vscode/vsce": "^3.2.0",
+    "eslint": "^9.17.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.0.0"
+  }
+}

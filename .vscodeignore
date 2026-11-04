@@ -1,0 +1,20 @@
+# Everything not needed inside the packaged .vsix
+.vscode/**
+.github/**
+docs/**
+scripts/**
+tests/**
+coverage/**
+src/**
+node_modules/**
+out/**/*.map
+eslint.config.mjs
+vitest.config.ts
+tsconfig.json
+.prettierrc.json
+.editorconfig
+.gitattributes
+.gitignore
+.nvmrc
+**/*.log
+.DS_Store

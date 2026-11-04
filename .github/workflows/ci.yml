@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (with coverage)
+        run: npm run test:coverage
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Package extension
+        run: npx vsce package
+
+      - name: Upload .vsix artifact
+        if: matrix.node == 22
+        uses: actions/upload-artifact@v4
+        with:
+          name: codesheaf-vsix
+          path: '*.vsix'
