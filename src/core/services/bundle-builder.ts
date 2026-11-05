@@ -325,6 +325,9 @@ export class BundleBuilder {
           this.recordSkip(rootDir, 'limit-reached', ctx);
           return;
         }
+        // Count every file *encountered*, not just the ones that load —
+        // otherwise a directory of 10k binary files never trips the cap.
+        collected += 1;
         const file = await this.loadFile(
           { kind: 'file', absolutePath: abs },
           'respect',
@@ -333,7 +336,6 @@ export class BundleBuilder {
           true,
         );
         if (file !== undefined) {
-          collected += 1;
           out.push(file);
         }
       }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_BUNDLE_OPTIONS,
+  MAX_DIRECTORY_FILES,
   type BundleOptions,
   type DirectoryEntry,
   type FileReadResult,
@@ -499,6 +500,24 @@ describe('BundleBuilder', () => {
       'src/bravo.ts',
       'src/charlie.ts',
     ]);
+  });
+
+  it('counts skipped files toward the directory cap too', async () => {
+    // 1001 binary files: none ever "loads", yet the DoS guard must trip.
+    const names = Array.from({ length: MAX_DIRECTORY_FILES + 1 }, (_, i) => `blob${i}.bin`);
+    const files: Record<string, string> = {};
+    for (const name of names) files[`${PROJECT_ROOT}/blobs/${name}`] = 'x\x00y\n';
+    const builder = new BundleBuilder({
+      workspace: new InMemoryWorkspace(PROJECT_ROOT),
+      fs: new InMemoryFileSystem(files),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build(
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/blobs` }],
+      options(),
+    );
+    expect(bundle.files).toHaveLength(0);
+    expect(bundle.skipped.some((s) => s.reason === 'limit-reached')).toBe(true);
   });
 
   it('terminates on cyclic directory trees (symlink loop guard)', async () => {
