@@ -10,7 +10,7 @@ import type {
   SkippedEntry,
 } from '../domain/bundle';
 import { BundleError } from '../domain/errors';
-import type { FileSystemPort, WorkspacePort } from '../ports';
+import type { FileReadResult, FileSystemPort, WorkspacePort } from '../ports';
 import { renderBundle } from './formatter';
 import { IgnoreMatcher } from './ignore/gitignore-matcher';
 import type { ResolvedCandidate } from './scan/import-scanner';
@@ -218,7 +218,13 @@ export class BundleBuilder {
       return undefined;
     }
 
-    const read = await this.deps.fs.readText(absolutePath, ctx.maxBytes);
+    // Editor-buffer form: when the caller carries the document's live
+    // content, the disk is not consulted at all (unsaved edits, untitled
+    // documents). The on-disk size cap does not apply by design.
+    const read: FileReadResult =
+      ref.content !== undefined
+        ? { ok: true, content: ref.content }
+        : await this.deps.fs.readText(absolutePath, ctx.maxBytes);
     if (!read.ok) {
       if (read.reason !== 'not-found' || recordNotFound) {
         this.recordSkip(absolutePath, read.reason, ctx);
@@ -239,7 +245,7 @@ export class BundleBuilder {
     return {
       absolutePath,
       displayPath: rel ?? nodePath.basename(absolutePath),
-      languageId: languageIdForPath(absolutePath),
+      languageId: ref.languageId ?? languageIdForPath(absolutePath),
       fullContent: read.content,
       outputContent,
       origin,

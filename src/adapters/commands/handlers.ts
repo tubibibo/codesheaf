@@ -9,6 +9,21 @@ import {
 
 export type AppContainer = CopyUseCaseDeps & PreviewUseCaseDeps;
 
+/**
+ * Input ref for the active editor's document, carrying the live buffer
+ * content and language. Editor commands must weave what the user is looking
+ * at — unsaved changes and untitled documents included — so the builder is
+ * handed the document text and never consults the disk for this file.
+ */
+function activeDocumentRef(editor: vscode.TextEditor): InputRef {
+  return {
+    kind: 'file',
+    absolutePath: editor.document.uri.fsPath,
+    content: editor.document.getText(),
+    languageId: editor.document.languageId,
+  };
+}
+
 /** Command: copy the active file as context (honors configured import depth). */
 export function copyActiveFile(deps: AppContainer): void {
   const editor = vscode.window.activeTextEditor;
@@ -16,7 +31,7 @@ export function copyActiveFile(deps: AppContainer): void {
     deps.notifier.showWarning('CodeSheaf: open a file first.');
     return;
   }
-  void copyAsContext(deps, [{ kind: 'file', absolutePath: editor.document.uri.fsPath }]);
+  void copyAsContext(deps, [activeDocumentRef(editor)]);
 }
 
 /** Command: copy the active file plus its import dependency closure (depth >= 3). */
@@ -26,7 +41,7 @@ export function copyActiveFileWithImports(deps: AppContainer): void {
     deps.notifier.showWarning('CodeSheaf: open a file first.');
     return;
   }
-  void copyAsContext(deps, [{ kind: 'file', absolutePath: editor.document.uri.fsPath }], {
+  void copyAsContext(deps, [activeDocumentRef(editor)], {
     ensureImportDepth: 3,
   });
 }
@@ -46,7 +61,14 @@ export function copySelection(deps: AppContainer): void {
   const startLine = selection.start.line + 1;
   const endLine = selection.end.character === 0 ? selection.end.line : selection.end.line + 1;
   void copyAsContext(deps, [
-    { kind: 'selection', absolutePath: editor.document.uri.fsPath, startLine, endLine },
+    {
+      kind: 'selection',
+      absolutePath: editor.document.uri.fsPath,
+      startLine,
+      endLine,
+      content: editor.document.getText(),
+      languageId: editor.document.languageId,
+    },
   ]);
 }
 
@@ -57,12 +79,13 @@ export function previewActiveFile(deps: AppContainer): void {
     deps.notifier.showWarning('CodeSheaf: open a file first.');
     return;
   }
-  void previewAsContext(deps, [{ kind: 'file', absolutePath: editor.document.uri.fsPath }]);
+  void previewAsContext(deps, [activeDocumentRef(editor)]);
 }
 
 /**
  * Command: copy the files/folders selected in the Explorer. Folders are
  * expanded by the builder (ignore-pruned, capped); gitignore rules apply.
+ * Explorer picks read from disk — there is no editor buffer for them.
  */
 export async function copyFromExplorer(
   deps: AppContainer,

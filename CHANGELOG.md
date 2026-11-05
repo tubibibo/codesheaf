@@ -45,6 +45,10 @@ Dependencies`, `Copy Selection as Context`, `Preview Context Bundle`,
   branches: crafted `../..` chains (absolute or root-relative — e.g. a C
   `#include "../../outside/x.h"`) can no longer weave files from outside
   the project.
+- Editor commands (copy file / copy + imports / copy selection / preview)
+  now weave the live editor buffer instead of the file on disk: unsaved
+  changes are included, and untitled documents no longer fail with
+  "nothing to copy". Explorer picks still read from disk.
 - Directory traversal is bounded against symlink cycles (visited set +
   depth cap); `tsconfig.test.json` no longer inherits the `src` exclude, so
   test sources are really type-checked; CI runs `prettier --check`.

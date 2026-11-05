@@ -111,8 +111,27 @@ export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
  * A bundle request. `file` refers to a whole file; `selection` is a 1-based,
  * inclusive line range; `directory` is expanded by the builder (with ignore
  * pruning and a hard file-count cap).
+ *
+ * `content`/`languageId` (file and selection only) carry the *editor buffer*
+ * state: when present the builder uses them instead of reading the file from
+ * disk, so unsaved changes and untitled documents weave correctly. Provided
+ * content is not subject to the on-disk size cap — it is what the user is
+ * looking at.
  */
 export type InputRef =
-  | { kind: 'file'; absolutePath: string; ignorePolicy?: IgnorePolicy }
+  | {
+      kind: 'file';
+      absolutePath: string;
+      ignorePolicy?: IgnorePolicy;
+      content?: string;
+      languageId?: string;
+    }
   | { kind: 'directory'; absolutePath: string }
-  | { kind: 'selection'; absolutePath: string; startLine: number; endLine: number };
+  | {
+      kind: 'selection';
+      absolutePath: string;
+      startLine: number;
+      endLine: number;
+      content?: string;
+      languageId?: string;
+    };

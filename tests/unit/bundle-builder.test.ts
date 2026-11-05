@@ -177,6 +177,62 @@ describe('BundleBuilder', () => {
     expect(bundle.files[0]?.content).toBe('two\nthree');
   });
 
+  it('prefers provided buffer content over the file on disk', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'file',
+          absolutePath: `${PROJECT_ROOT}/src/a.ts`,
+          content: 'export const a = "unsaved edit";\n',
+          languageId: 'typescript',
+        },
+      ],
+      options({ maxImportDepth: 0 }),
+    );
+    expect(bundle.files).toHaveLength(1);
+    expect(bundle.files[0]?.content).toBe('export const a = "unsaved edit";\n');
+    expect(bundle.skipped).toHaveLength(0);
+  });
+
+  it('weaves documents that exist only as buffers (untitled)', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'file',
+          absolutePath: `${PROJECT_ROOT}/scratch-1`,
+          content: 'quick note\n',
+          languageId: 'markdown',
+        },
+      ],
+      options(),
+    );
+    expect(bundle.files).toHaveLength(1);
+    expect(bundle.files[0]?.content).toBe('quick note\n');
+    expect(bundle.files[0]?.languageId).toBe('markdown');
+    expect(bundle.skipped.some((s) => s.reason === 'not-found')).toBe(false);
+  });
+
+  it('slices selections from provided buffer content', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const buffer = 'alpha\nbeta\ngamma\n';
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'selection',
+          absolutePath: `${PROJECT_ROOT}/only-in-editor.ts`,
+          startLine: 2,
+          endLine: 2,
+          content: buffer,
+          languageId: 'typescript',
+        },
+      ],
+      options(),
+    );
+    expect(bundle.files[0]?.content).toBe('beta');
+  });
+
   it('clamps out-of-range selections', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
