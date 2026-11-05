@@ -277,6 +277,28 @@ describe('BundleBuilder', () => {
     expect(bundle.files[0]?.content).toBe('alpha\nbeta\n');
   });
 
+  it('lets the provided languageId drive import scanning and fencing', async () => {
+    // A .txt buffer whose editor language is python: the python strategy
+    // must fire (pulling util.py) and the fence must say python.
+    const { builder } = makeBuilder({
+      ...FIXTURES,
+      [`${PROJECT_ROOT}/util.py`]: 'def helper():\n    return 1\n',
+    });
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'file',
+          absolutePath: `${PROJECT_ROOT}/notes.txt`,
+          content: 'from .util import helper\n',
+          languageId: 'python',
+        },
+      ],
+      options(),
+    );
+    expect(bundle.files.map((f) => f.path)).toEqual(['notes.txt', 'util.py']);
+    expect(bundle.rendered).toContain('```python');
+  });
+
   it('weaves documents that exist only as buffers (untitled)', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
