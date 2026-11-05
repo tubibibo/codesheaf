@@ -25,7 +25,7 @@ weaving unexpected files is a data-exposure hazard, not a cosmetic issue.
   directory tree only; several inputs expand the boundary to the deepest
   directory containing all of them. When no common ancestor exists
   (inputs on different Windows drives), import following is disabled.
-- A candidate that *is* a filesystem root (`/`, `C:\`) is never admitted,
+- A candidate that _is_ a filesystem root (`/`, `C:\`) is never admitted,
   regardless of the derived boundary (defense in depth).
 - Inputs can set `resolveImports: false` to disable import following for
   that input alone. Untitled and other virtual documents
