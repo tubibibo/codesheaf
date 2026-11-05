@@ -99,6 +99,11 @@ Only **local** dependencies are followed:
 
 ## Known limitations
 
+- **Virtual workspaces are not supported** (`capabilities.virtualWorkspaces:
+false`): pure-web environments such as github.dev / vscode.dev, where
+  files live behind `vscode-vfs:`-style URIs, cannot be woven. Local
+  windows and remote file systems (SSH / WSL / devcontainers — they expose
+  regular `file:` URIs to the extension host) work normally.
 - Token counts are heuristic estimates (4 ASCII chars ≈ 1 token; CJK ≈ 1
   token/char), not exact tokenizer output — see [ADR-0004](adr/0004-estimate-tokens-with-a-heuristic.md).
 - Import scanning is regex-based and comment/string-aware but not a full
