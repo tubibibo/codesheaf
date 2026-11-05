@@ -81,6 +81,7 @@ describe('PythonImportStrategy', () => {
     expect(paths).toContain('root-relative:mypkg/tools.py');
     expect(paths).toContain('root-relative:other.py');
     expect(paths).toContain('root-relative:mypkg.py');
+    expect(paths).toContain('root-relative:mypkg/deep.py'); // imported name = submodule
   });
 
   it('skips __future__', () => {
@@ -89,12 +90,38 @@ describe('PythonImportStrategy', () => {
     ).toHaveLength(0);
   });
 
-  it('produces only the package __init__ for "from . import x"', async () => {
+  it('produces the package __init__ and sibling modules for "from . import x"', () => {
     const paths = norm(
-      strategy.extractImports('from . import helper\n', `${PROJECT_ROOT}/pkg/a.py`),
+      strategy.extractImports('from . import helper, sub\n', `${PROJECT_ROOT}/pkg/a.py`),
     );
     expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/__init__.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/helper.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/helper/__init__.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/sub.py`);
     expect(paths.some((p) => p === `absolute:${PROJECT_ROOT}/pkg.py`)).toBe(false);
+  });
+
+  it('resolves imported names of a dotted module as its submodules', () => {
+    const paths = norm(
+      strategy.extractImports('from mypkg import deep, other\n', `${PROJECT_ROOT}/main.py`),
+    );
+    expect(paths).toContain('root-relative:mypkg/deep.py');
+    expect(paths).toContain('root-relative:mypkg/deep/__init__.py');
+    expect(paths).toContain('root-relative:mypkg/other.py');
+  });
+
+  it('parses parenthesized multi-line from-import name lists', () => {
+    const source = 'from . import (\n  helper,\n  tools as t,\n)\n';
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/pkg/a.py`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/helper.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/tools.py`);
+  });
+
+  it('drops as-aliases and star imports from name lists', () => {
+    const paths = norm(strategy.extractImports('from . import x as y, *\n', `${PROJECT_ROOT}/a.py`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/x.py`);
+    expect(paths.some((p) => p.endsWith('/y.py'))).toBe(false);
+    expect(paths).toHaveLength(3); // x.py + x/__init__.py + the package's own __init__.py
   });
 });
 

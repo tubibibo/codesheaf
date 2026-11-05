@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   options: a non-finite `maxFileSizeKB` used to produce a NaN size cap,
   which silently disabled the limit entirely. Non-finite values now fall
   back to the documented defaults.
+- Python import scanning now resolves the names of a `from ... import`
+  statement: `from . import helper` offers the sibling `helper.py` (and its
+  package form) in addition to the package's `__init__.py` — previously
+  only the `__init__.py` was offered. Parenthesized multi-line name lists
+  are parsed too, and names of dotted modules resolve as submodules.
 
 ## [1.0.0] - 2026-11-05
 
