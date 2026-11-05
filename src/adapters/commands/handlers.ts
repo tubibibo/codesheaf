@@ -96,10 +96,13 @@ async function toInputRef(uri: vscode.Uri): Promise<InputRef> {
   try {
     const stat = await vscode.workspace.fs.stat(uri);
     if ((stat.type & vscode.FileType.Directory) !== 0) {
+      // Directories expand with ignore pruning inside the builder.
       return { kind: 'directory', absolutePath: uri.fsPath };
     }
   } catch {
     // Let the builder report a precise skip reason.
   }
-  return { kind: 'file', absolutePath: uri.fsPath, ignorePolicy: 'respect' };
+  // An explicitly picked file is an explicit pick: it bypasses ignore rules,
+  // exactly like the editor commands (README: "explicit picks always win").
+  return { kind: 'file', absolutePath: uri.fsPath };
 }
