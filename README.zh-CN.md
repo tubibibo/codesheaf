@@ -22,7 +22,7 @@ _Sheaf_（麦捆）即"把散落的秸秆捆成一束"。CodeSheaf 把你正在�
 - 📊 **实时 token 表**——状态栏实时显示当前文件/选区的估算 token；每个打包结果也自带估算。
 - 📐 **三种输出格式**——Markdown（围栏代码块 + 文件树）、XML（CDATA 安全、属性转义）、纯文本。
 - 🛡️ **安全的文件挑选**——遵守 `.gitignore` 与自定义排除规则；二进制与超限文件按精确原因跳过；显式选择的文件永远保留（你点名要的，就给你）。
-- 🔍 **粘贴前预览**——把最终打包文本渲染到只读编辑器中检查，而不是直接进剪贴板。
+- 🔍 **粘贴前预览**——把最终打包文本在单独的编辑器标签页中打开检查，而不是直接进剪贴板。
 - 🧪 **可信的核心**——六边形架构，ESLint 强制核心层禁用 `vscode`；80 个单元测试；语句覆盖率约 96%；**零运行时 npm 依赖**（.vsix 仅约 46 KB）。
 
 ## 🚀 安装
@@ -55,7 +55,7 @@ cd codesheaf && npm install
 | `Copy Active File as Context`            | 打包活动文件（按设置跟随导入）。             |
 | `Copy Active File + Import Dependencies` | 保证导入深度 ≥ 3。                           |
 | `Copy Selection as Context`              | 只打包选中行（导入仍按整个文件解析）。       |
-| `Preview Context Bundle (Active File)`   | 只读预览，不进剪贴板。                       |
+| `Preview Context Bundle (Active File)`   | 在编辑器标签页预览，不进剪贴板。             |
 | `Copy as LLM Context`                    | 资源管理器多选；文件夹展开并按忽略规则裁剪。 |
 
 ## ⚙️ 设置（节选）

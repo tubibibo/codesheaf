@@ -6,4 +6,8 @@ export {
   type CopyResult,
   type CopyUseCaseDeps,
 } from './use-cases/copy-as-context';
-export { previewAsContext, type PreviewUseCaseDeps } from './use-cases/preview-as-context';
+export {
+  previewAsContext,
+  previewLanguageForFormat,
+  type PreviewUseCaseDeps,
+} from './use-cases/preview-as-context';

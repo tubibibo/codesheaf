@@ -50,7 +50,7 @@ export function copySelection(deps: AppContainer): void {
   ]);
 }
 
-/** Command: preview the bundle for the active file in a read-only editor. */
+/** Command: preview the bundle for the active file in a separate editor tab. */
 export function previewActiveFile(deps: AppContainer): void {
   const editor = vscode.window.activeTextEditor;
   if (editor === undefined) {

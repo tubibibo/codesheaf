@@ -10,6 +10,7 @@ import type {
 import {
   copyAsContext,
   previewAsContext,
+  previewLanguageForFormat,
   type CopyUseCaseDeps,
   type PreviewUseCaseDeps,
 } from '../../src/application';
@@ -148,10 +149,31 @@ describe('previewAsContext', () => {
     expect(deps.previewPort.opened[0]?.content).toContain('# CodeSheaf Context Bundle');
   });
 
+  it('previews xml bundles with xml highlighting', async () => {
+    const deps = makeDeps({ format: 'xml' });
+    await previewAsContext(deps.preview, [{ kind: 'file', absolutePath: 'C:/proj/src/a.ts' }]);
+    expect(deps.previewPort.opened[0]?.languageId).toBe('xml');
+    expect(deps.previewPort.opened[0]?.content).toContain('<codesheaf');
+  });
+
+  it('previews plain bundles without highlighting', async () => {
+    const deps = makeDeps({ format: 'plain' });
+    await previewAsContext(deps.preview, [{ kind: 'file', absolutePath: 'C:/proj/src/a.ts' }]);
+    expect(deps.previewPort.opened[0]?.languageId).toBe('plaintext');
+  });
+
   it('returns false when nothing could be woven', async () => {
     const deps = makeDeps();
     const ok = await previewAsContext(deps.preview, []);
     expect(ok).toBe(false);
     expect(deps.notifier.errors[0]).toContain('zero inputs');
+  });
+});
+
+describe('previewLanguageForFormat', () => {
+  it('maps every bundle format to an editor language', () => {
+    expect(previewLanguageForFormat('markdown')).toBe('markdown');
+    expect(previewLanguageForFormat('xml')).toBe('xml');
+    expect(previewLanguageForFormat('plain')).toBe('plaintext');
   });
 });

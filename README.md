@@ -38,8 +38,8 @@ exactly the local dependencies that matter."**
 - 🛡️ **Safe picking** — honors `.gitignore` plus your exclude globs; skips
   binaries and oversized files with a precise per-file reason; explicit
   picks always win (you asked for that file, you get it).
-- 🔍 **Preview before you paste** — render the exact bundle into a read-only
-  editor instead of the clipboard.
+- 🔍 **Preview before you paste** — render the exact bundle into a separate
+  editor tab instead of the clipboard.
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
   the core enforced by ESLint; 80 unit tests; ~96% statement coverage;
   **zero runtime npm dependencies** (the .vsix is ~46 KB).
@@ -75,7 +75,7 @@ Full command and settings reference: [docs/user-guide.md](docs/user-guide.md).
 | `Copy Active File as Context`            | Active file (+ imports per settings).                                |
 | `Copy Active File + Import Dependencies` | Guarantees import depth ≥ 3.                                         |
 | `Copy Selection as Context`              | Just the selected lines (imports still resolved from the full file). |
-| `Preview Context Bundle (Active File)`   | Read-only preview instead of clipboard.                              |
+| `Preview Context Bundle (Active File)`   | Opens the bundle in a separate editor tab (no clipboard write).      |
 | `Copy as LLM Context`                    | Explorer multi-select; folders expand, ignore-pruned.                |
 
 ## ⚙️ Settings (highlights)

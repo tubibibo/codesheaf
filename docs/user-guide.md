@@ -17,7 +17,7 @@
 | `CodeSheaf: Copy Active File as Context`            | Weaves the active file (+ imports per your configured depth) into the clipboard.                                                                           |
 | `CodeSheaf: Copy Active File + Import Dependencies` | Same, but guarantees the import closure is followed to depth ≥ 3, regardless of the `0` setting.                                                           |
 | `CodeSheaf: Copy Selection as Context`              | Weaves only the selected lines (1-based inclusive range) — imports are still scanned from the full file, so a deep selection still pulls its dependencies. |
-| `CodeSheaf: Preview Context Bundle (Active File)`   | Opens the exact bundle text in a read-only editor instead of the clipboard — inspect before you paste.                                                     |
+| `CodeSheaf: Preview Context Bundle (Active File)`   | Opens the exact bundle text in a separate editor tab instead of the clipboard — inspect before you paste.                                                  |
 | `CodeSheaf: Copy as LLM Context`                    | Right-click one or more files/folders in the Explorer. Folders expand into files (ignore-pruned, capped at 1000 files).                                    |
 
 The Editor context menu shows _Copy Selection as Context_ when text is

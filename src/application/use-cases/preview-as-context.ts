@@ -1,4 +1,4 @@
-import type { InputRef } from '../../core/domain/bundle';
+import type { BundleFormat, InputRef } from '../../core/domain/bundle';
 import type { ConfigPort, LoggerPort, NotificationPort, PreviewPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
 import { formatTokenCount } from '../../core/utils/format';
@@ -12,10 +12,25 @@ export interface PreviewUseCaseDeps {
   readonly logger: LoggerPort;
 }
 
+/** Maps a bundle format to the editor language used for its preview tab. */
+export function previewLanguageForFormat(format: BundleFormat): string {
+  switch (format) {
+    case 'xml':
+      return 'xml';
+    case 'plain':
+      return 'plaintext';
+    case 'markdown':
+    default:
+      return 'markdown';
+  }
+}
+
 /**
  * Use case: weave the given inputs into a bundle and open the rendered text
- * in a read-only editor instead of the clipboard — handy for inspecting
- * exactly what an LLM would receive before pasting it anywhere.
+ * in a separate editor tab (no clipboard write) — handy for inspecting
+ * exactly what an LLM would receive before pasting it anywhere. Untitled
+ * tabs are technically editable; that is a documented trade-off, not a
+ * read-only view.
  */
 export async function previewAsContext(
   deps: PreviewUseCaseDeps,
@@ -31,7 +46,7 @@ export async function previewAsContext(
       );
       return false;
     }
-    await deps.preview.openText(bundle.rendered, 'markdown');
+    await deps.preview.openText(bundle.rendered, previewLanguageForFormat(bundle.format));
     deps.notifier.showInformation(
       `CodeSheaf: previewing ${bundle.files.length} file(s) · ~${formatTokenCount(bundle.estimatedTokens)} tokens`,
     );
