@@ -3,6 +3,8 @@
  * directories first, alphabetically — the shape reviewers expect to see
  * at the top of a context bundle.
  */
+import { compareNames } from '../utils/paths';
+
 export function renderFileTree(paths: readonly string[], rootLabel = 'project'): string {
   if (paths.length === 0) return `${rootLabel}/`;
 
@@ -31,7 +33,7 @@ export function renderFileTree(paths: readonly string[], rootLabel = 'project'):
   const walk = (node: Node, prefix: string): void => {
     const entries = [...node.children.values()].sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-      return a.name.localeCompare(b.name);
+      return compareNames(a.name, b.name);
     });
     entries.forEach((entry, index) => {
       const isLast = index === entries.length - 1;

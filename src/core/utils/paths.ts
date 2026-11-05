@@ -7,6 +7,18 @@ export function hasDotDotSegment(path: string): boolean {
 }
 
 /**
+ * Deterministic name comparator: case-insensitive first (so `a` sorts
+ * before `B` on every platform and locale), then by code point to break
+ * ties. Replaces `localeCompare`, whose order varies with the host locale.
+ */
+export function compareNames(a: string, b: string): number {
+  const la = a.toLowerCase();
+  const lb = b.toLowerCase();
+  if (la !== lb) return la < lb ? -1 : 1;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
  * Normalizes an absolute path into a stable deduplication key. Windows paths
  * are case-insensitive and may mix separators, so they are lower-cased and
  * slash-normalized; POSIX paths keep their case.

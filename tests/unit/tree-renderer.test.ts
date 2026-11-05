@@ -26,4 +26,10 @@ describe('renderFileTree', () => {
   it('accepts a custom root label', () => {
     expect(renderFileTree(['a.ts'], 'bundle').startsWith('bundle/')).toBe(true);
   });
+
+  it('orders names deterministically regardless of case', () => {
+    // localeCompare would differ between hosts; 'a' must precede 'B' always.
+    const tree = renderFileTree(['B.ts', 'a.ts']);
+    expect(tree.split('\n')).toEqual(['project/', '├── a.ts', '└── B.ts']);
+  });
 });

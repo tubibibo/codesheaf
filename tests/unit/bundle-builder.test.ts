@@ -446,6 +446,39 @@ describe('BundleBuilder', () => {
     await expect(builder.build([], options())).rejects.toBeInstanceOf(BundleError);
   });
 
+  it('sorts directory entries deterministically regardless of host order', async () => {
+    // A host could list files in any order; the woven order must not care.
+    class UnsortedFileSystem extends InMemoryFileSystem {
+      private static readonly NAMES = ['charlie.ts', 'alpha.ts', 'bravo.ts'];
+      override async listDir(dir: string): Promise<readonly DirectoryEntry[]> {
+        const dirKey = normalizePath(dir).replace(/\/+$/, '');
+        if (dirKey !== `${PROJECT_ROOT}/src`) return [];
+        return UnsortedFileSystem.NAMES.map<DirectoryEntry>((name) => ({
+          name,
+          isDirectory: false,
+        }));
+      }
+    }
+    const builder = new BundleBuilder({
+      workspace: new InMemoryWorkspace(PROJECT_ROOT),
+      fs: new UnsortedFileSystem({
+        [`${PROJECT_ROOT}/src/alpha.ts`]: 'export const a = 1;\n',
+        [`${PROJECT_ROOT}/src/bravo.ts`]: 'export const b = 2;\n',
+        [`${PROJECT_ROOT}/src/charlie.ts`]: 'export const c = 3;\n',
+      }),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build(
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/src` }],
+      options({ maxImportDepth: 0 }),
+    );
+    expect(bundle.files.map((f) => f.path)).toEqual([
+      'src/alpha.ts',
+      'src/bravo.ts',
+      'src/charlie.ts',
+    ]);
+  });
+
   it('terminates on cyclic directory trees (symlink loop guard)', async () => {
     // A→B→A directory cycle: joined paths grow on every level, so a
     // path-keyed visited set never repeats — the depth cap is what bounds

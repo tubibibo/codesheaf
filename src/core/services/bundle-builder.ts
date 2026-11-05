@@ -17,7 +17,7 @@ import type { ResolvedCandidate } from './scan/import-scanner';
 import { ImportScannerService } from './scan/import-scanner';
 import { renderFileTree } from './tree-renderer';
 import { estimateTokens } from './token-estimator';
-import { dedupeKey, hasDotDotSegment } from '../utils/paths';
+import { compareNames, dedupeKey, hasDotDotSegment } from '../utils/paths';
 import { normalizeNewlines } from '../utils/text';
 import { languageIdForPath } from '../utils/languages';
 import { CODESHEAF_VERSION } from '../../version';
@@ -301,6 +301,9 @@ export class BundleBuilder {
         this.recordSkip(current.dir, 'unreadable', ctx);
         continue;
       }
+      // Host listing order is unspecified; sort so bundles are reproducible
+      // across platforms and locales.
+      entries = [...entries].sort((a, b) => compareNames(a.name, b.name));
       for (const entry of entries) {
         const abs = nodePath.join(current.dir, entry.name);
         const rel = this.deps.workspace.relativePath(abs);
