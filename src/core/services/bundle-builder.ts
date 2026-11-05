@@ -170,32 +170,46 @@ export class BundleBuilder {
       // Import candidates must stay inside the workspace: a crafted
       // '../..' chain (or an absolute import) must never weave files from
       // outside the project. Explicit user inputs do not go through here.
-      return this.isInsideWorkspace(candidate.path) ? candidate.path : undefined;
+      return this.admitCandidate(candidate.path);
     }
     // Root-relative paths are relative to a workspace root by definition,
     // so any `..` segment in them is malformed and could escape (defense in
     // depth: the strategies already reject such specifiers).
     if (hasDotDotSegment(candidate.path)) return undefined;
     for (const root of this.deps.workspace.roots()) {
-      const abs = nodePath.join(root, candidate.path);
-      if (!(await this.deps.fs.exists(abs))) continue;
-      if (!this.isInsideWorkspace(abs)) continue;
-      return abs;
+      const abs = await this.admitCandidate(nodePath.join(root, candidate.path));
+      if (abs !== undefined) return abs;
     }
     return undefined;
   }
 
   /**
+   * Admits an import candidate only when it — and, if it resolves, the
+   * symlink target it points at — lies inside the workspace. Returns the
+   * (lexical) candidate path, or `undefined` for silent misses.
+   */
+  private async admitCandidate(absolutePath: string): Promise<string | undefined> {
+    if (!this.isInsideWorkspace(absolutePath)) return undefined;
+    if (!(await this.deps.fs.exists(absolutePath))) return undefined;
+    const real = await this.deps.fs.realPath(absolutePath);
+    if (real !== undefined && !this.isInsideWorkspace(real)) return undefined;
+    return absolutePath;
+  }
+
+  /**
    * Workspace containment for import candidates. Returns `true` when there
-   * are no workspace roots (no boundary to enforce). Non-matches are silent
-   * resolution misses, never recorded as skips.
+   * are no workspace roots (no boundary to enforce). The `..` test checks
+   * whole segments only, so a legitimately named `..foo` file is admitted.
+   * Non-matches are silent resolution misses, never recorded as skips.
    */
   private isInsideWorkspace(absolutePath: string): boolean {
     const roots = this.deps.workspace.roots();
     if (roots.length === 0) return true;
     return roots.some((root) => {
       const rel = nodePath.relative(root, absolutePath);
-      return rel !== '' && !rel.startsWith('..') && !nodePath.isAbsolute(rel);
+      if (rel === '' || nodePath.isAbsolute(rel)) return false;
+      const firstSegment = rel.split(/[\\/]/)[0];
+      return firstSegment !== '..';
     });
   }
 

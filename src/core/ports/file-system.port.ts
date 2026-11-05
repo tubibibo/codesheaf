@@ -27,6 +27,12 @@ export interface FileSystemPort {
   readText(absolutePath: string, maxBytes: number): Promise<FileReadResult>;
   /** Lists one directory level. May throw; the caller handles failures. */
   listDir(absoluteDir: string): Promise<readonly DirectoryEntry[]>;
+  /**
+   * Resolves symlinks to the true location of a path, or `undefined` when
+   * it cannot be resolved. Used to keep import candidates that traverse a
+   * symlink outside the workspace from being woven.
+   */
+  realPath(absolutePath: string): Promise<string | undefined>;
 }
 
 /**

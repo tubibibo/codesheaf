@@ -39,6 +39,11 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.files.has(normalizePath(absolutePath));
   }
 
+  async realPath(absolutePath: string): Promise<string | undefined> {
+    const key = normalizePath(absolutePath);
+    return this.files.has(key) ? key : undefined;
+  }
+
   async readText(absolutePath: string, maxBytes: number): Promise<FileReadResult> {
     const content = this.files.get(normalizePath(absolutePath));
     if (content === undefined) return { ok: false, reason: 'not-found' };

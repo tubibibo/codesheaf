@@ -1,3 +1,4 @@
+import { realpath } from 'node:fs/promises';
 import * as vscode from 'vscode';
 import type { DirectoryEntry, FileReadResult, FileSystemPort } from '../../core/ports';
 import { isProbablyBinary } from '../../core/utils/binary';
@@ -12,6 +13,14 @@ export class VsCodeFileSystem implements FileSystemPort {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async realPath(absolutePath: string): Promise<string | undefined> {
+    try {
+      return await realpath(absolutePath);
+    } catch {
+      return undefined;
     }
   }
 

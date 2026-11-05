@@ -11,7 +11,13 @@ import { BundleError } from '../../src/core/domain/errors';
 import { BundleBuilder } from '../../src/core/services/bundle-builder';
 import { ImportScannerService } from '../../src/core/services/scan/import-scanner';
 import { BUILT_IN_STRATEGIES } from '../../src/core/services/scan/strategies';
-import { InMemoryWorkspace, OUTSIDE_ROOT, PROJECT_ROOT } from '../support/fake-fs';
+import {
+  InMemoryFileSystem,
+  InMemoryWorkspace,
+  normalizePath,
+  OUTSIDE_ROOT,
+  PROJECT_ROOT,
+} from '../support/fake-fs';
 import { makeBuilder } from '../support/harness';
 
 const FIXTURES: Record<string, string> = {
@@ -104,6 +110,42 @@ describe('BundleBuilder', () => {
     // '../../outside/secret.h' must not escape through that branch either.
     expect(bundle.files.map((f) => f.path)).toEqual(['src/main.c']);
     expect(bundle.skipped.some((s) => s.path.includes('outside'))).toBe(false);
+  });
+
+  it('admits legitimately named ..-prefixed files inside the workspace', async () => {
+    const { builder } = makeBuilder({
+      [`${PROJECT_ROOT}/src/main.ts`]: 'import { v } from "../..foo";\nexport const m = v;\n',
+      [`${PROJECT_ROOT}/..foo.ts`]: 'export const v = 1;\n',
+    });
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/main.ts`)], options());
+    // '..foo.ts' is a file *name*, not a traversal — the old prefix check
+    // rejected it; segment-aware containment admits it.
+    expect(bundle.files.map((f) => f.path)).toEqual(['src/main.ts', '..foo.ts']);
+  });
+
+  it('drops candidates whose symlink target lies outside the workspace', async () => {
+    // A symlink inside the workspace pointing outside: lexically inside,
+    // physically outside. The realpath guard must catch it.
+    class SymlinkFileSystem extends InMemoryFileSystem {
+      override async realPath(absolutePath: string): Promise<string | undefined> {
+        const key = normalizePath(absolutePath);
+        if (key === `${PROJECT_ROOT}/src/link.ts`) return `${OUTSIDE_ROOT}/secret.ts`;
+        return super.realPath(absolutePath);
+      }
+    }
+    const workspace = new InMemoryWorkspace(PROJECT_ROOT);
+    const builder = new BundleBuilder({
+      workspace,
+      fs: new SymlinkFileSystem({
+        [`${PROJECT_ROOT}/src/main.ts`]: 'import { s } from "./link";\nexport const m = s;\n',
+        [`${PROJECT_ROOT}/src/link.ts`]: 'export const s = 1;\n',
+        [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n',
+      }),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/main.ts`)], options());
+    expect(bundle.files.map((f) => f.path)).toEqual(['src/main.ts']);
+    expect(bundle.skipped.some((s) => s.path.includes('secret'))).toBe(false);
   });
 
   it('keeps allowing explicitly picked files from outside the workspace', async () => {
@@ -392,6 +434,9 @@ describe('BundleBuilder', () => {
     class CyclicDirectoryFileSystem implements FileSystemPort {
       async exists(): Promise<boolean> {
         return false;
+      }
+      async realPath(p: string): Promise<string | undefined> {
+        return p;
       }
       async readText(): Promise<FileReadResult> {
         return { ok: false, reason: 'not-found' };
