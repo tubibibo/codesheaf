@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   import closure could reach any path on disk in that mode. Untitled and
   other virtual documents no longer resolve import declarations at all
   (see ADR-0006).
+- Mistyped numeric settings (`"5"`, `"abc"`) no longer poison the bundle
+  options: a non-finite `maxFileSizeKB` used to produce a NaN size cap,
+  which silently disabled the limit entirely. Non-finite values now fall
+  back to the documented defaults.
 
 ## [1.0.0] - 2026-11-05
 
