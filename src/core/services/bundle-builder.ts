@@ -18,6 +18,7 @@ import { ImportScannerService } from './scan/import-scanner';
 import { renderFileTree } from './tree-renderer';
 import { estimateTokens } from './token-estimator';
 import { dedupeKey, hasDotDotSegment } from '../utils/paths';
+import { normalizeNewlines } from '../utils/text';
 import { languageIdForPath } from '../utils/languages';
 import { CODESHEAF_VERSION } from '../../version';
 
@@ -231,6 +232,11 @@ export class BundleBuilder {
       }
       return undefined;
     }
+
+    // CRLF (and lone CR) endings are normalized once, here, so line-number
+    // markers and selection slicing never carry stray \r characters. This
+    // covers disk reads and editor-buffer content alike.
+    read.content = normalizeNewlines(read.content);
 
     let outputContent = read.content;
     if (ref.kind === 'selection') {

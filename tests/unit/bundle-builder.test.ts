@@ -195,6 +195,46 @@ describe('BundleBuilder', () => {
     expect(bundle.skipped).toHaveLength(0);
   });
 
+  it('normalizes CRLF endings from disk and buffers (no stray \\r)', async () => {
+    const crlfFiles: Record<string, string> = {
+      [`${PROJECT_ROOT}/win/lines.txt`]: 'one\r\ntwo\r\nthree\r\n',
+    };
+    const { builder } = makeBuilder(crlfFiles);
+    const whole = await builder.build([file(`${PROJECT_ROOT}/win/lines.txt`)], options());
+    expect(whole.files[0]?.content).toBe('one\ntwo\nthree\n');
+    expect(whole.files[0]?.content.includes('\r')).toBe(false);
+
+    const sliced = await builder.build(
+      [
+        {
+          kind: 'selection',
+          absolutePath: `${PROJECT_ROOT}/win/lines.txt`,
+          startLine: 2,
+          endLine: 2,
+        },
+      ],
+      options(),
+    );
+    expect(sliced.files[0]?.content).toBe('two');
+    expect(sliced.files[0]?.content.includes('\r')).toBe(false);
+  });
+
+  it('normalizes CRLF endings in provided buffer content too', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'file',
+          absolutePath: `${PROJECT_ROOT}/scratch-2`,
+          content: 'alpha\r\nbeta\r\n',
+          languageId: 'plaintext',
+        },
+      ],
+      options(),
+    );
+    expect(bundle.files[0]?.content).toBe('alpha\nbeta\n');
+  });
+
   it('weaves documents that exist only as buffers (untitled)', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(

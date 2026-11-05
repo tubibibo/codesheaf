@@ -5,6 +5,7 @@ export {
   toCdata,
   longestBacktickRun,
   withLineNumbers,
+  normalizeNewlines,
 } from './text';
 export { formatTokenCount } from './format';
 export { isProbablyBinary } from './binary';

@@ -141,6 +141,11 @@ export function longestBacktickRun(text: string): number {
   return max;
 }
 
+/** Normalizes CRLF (and lone CR) line endings to LF so line math is exact. */
+export function normalizeNewlines(content: string): string {
+  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
 /** Prefixes every line with a zero-padded `N | ` marker (1-based). */
 export function withLineNumbers(content: string): string {
   const lines = content.split('\n');
