@@ -25,6 +25,9 @@ configuration wins ties.
 - One ~150-line dependency-free module with 11 focused tests.
 - Nested `.gitignore` files and exotic git semantics are not supported —
   documented in the user guide; the escape hatch is `codesheaf.exclude`.
+  Only the top-level `.gitignore` of each workspace root is read, and each
+  root's rules are scoped to that root (a `WorkspacePort.rootFor` lookup),
+  so anchored patterns in one multi-root folder cannot prune another.
 - Explicitly picked files bypass ignore rules entirely (product decision:
   a user-chosen file is never silently dropped).
 - Known divergence from git, negation re-inclusion: with `dist/` +

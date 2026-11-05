@@ -66,17 +66,33 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 }
 
-/** Single-root in-memory WorkspacePort over POSIX-style absolute paths. */
+/**
+ * In-memory WorkspacePort over POSIX-style absolute paths. Accepts a single
+ * root or several (multi-root fixtures).
+ */
 export class InMemoryWorkspace implements WorkspacePort {
-  constructor(private readonly root: string) {}
+  private readonly rootList: readonly string[];
+
+  constructor(roots: string | readonly string[]) {
+    this.rootList = (typeof roots === 'string' ? [roots] : roots).map((root) =>
+      normalizePath(root).replace(/\/+$/, ''),
+    );
+  }
 
   roots(): readonly string[] {
-    return [this.root];
+    return this.rootList;
+  }
+
+  rootFor(absolutePath: string): string | undefined {
+    const path = normalizePath(absolutePath);
+    return this.rootList.find((root) => path === root || path.startsWith(`${root}/`));
   }
 
   relativePath(absolutePath: string): string | undefined {
+    const root = this.rootFor(absolutePath);
+    if (root === undefined) return undefined;
     const path = normalizePath(absolutePath);
-    if (path === this.root) return '';
-    return path.startsWith(`${this.root}/`) ? path.slice(this.root.length + 1) : undefined;
+    if (path === root) return '';
+    return path.slice(root.length + 1);
   }
 }

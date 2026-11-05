@@ -6,7 +6,7 @@ import { InMemoryFileSystem, InMemoryWorkspace, PROJECT_ROOT } from './fake-fs';
 /** Wires a real BundleBuilder over an in-memory file system. */
 export function makeBuilder(
   files: Readonly<Record<string, string>>,
-  root = PROJECT_ROOT,
+  root: string | readonly string[] = PROJECT_ROOT,
 ): { builder: BundleBuilder; fs: InMemoryFileSystem; workspace: InMemoryWorkspace } {
   const fs = new InMemoryFileSystem(files);
   const workspace = new InMemoryWorkspace(root);

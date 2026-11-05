@@ -50,7 +50,8 @@ interface WorkingFile {
 
 interface BuildContext {
   readonly options: BundleOptions;
-  readonly ignore: IgnoreMatcher;
+  /** One matcher per workspace root, so a root's rules never leak into another. */
+  readonly ignoreByRoot: Map<string, IgnoreMatcher>;
   readonly maxBytes: number;
   readonly filesByPath: Map<string, WorkingFile>;
   readonly order: string[];
@@ -77,10 +78,10 @@ export class BundleBuilder {
       throw new BundleError('Cannot weave a bundle from zero inputs.');
     }
 
-    const ignore = await this.buildIgnoreMatcher(options);
+    const ignoreByRoot = await this.buildIgnoreMatchers(options);
     const ctx: BuildContext = {
       options,
-      ignore,
+      ignoreByRoot,
       maxBytes: Math.max(1, Math.round(options.maxFileSizeKB * 1024)),
       filesByPath: new Map(),
       order: [],
@@ -213,7 +214,7 @@ export class BundleBuilder {
       policy === 'respect' &&
       ctx.options.respectGitignore &&
       rel !== undefined &&
-      ctx.ignore.isIgnored(rel)
+      this.isIgnored(absolutePath, rel, ctx)
     ) {
       this.recordSkip(absolutePath, 'ignored', ctx);
       return undefined;
@@ -290,7 +291,7 @@ export class BundleBuilder {
         const abs = nodePath.join(current.dir, entry.name);
         const rel = this.deps.workspace.relativePath(abs);
         if (rel === undefined) continue;
-        if (ctx.options.respectGitignore && ctx.ignore.isIgnored(rel)) continue;
+        if (ctx.options.respectGitignore && this.isIgnored(abs, rel, ctx)) continue;
         if (entry.isDirectory) {
           if (current.depth + 1 > MAX_DIRECTORY_DEPTH) {
             this.recordSkip(rootDir, 'limit-reached', ctx);
@@ -339,20 +340,40 @@ export class BundleBuilder {
     ctx.skipped.push({ path: rel ?? nodePath.basename(absolutePath), reason });
   }
 
-  private async buildIgnoreMatcher(options: BundleOptions): Promise<IgnoreMatcher> {
-    const patterns: string[] = [];
-    if (options.respectGitignore) {
-      for (const root of this.deps.workspace.roots()) {
+  /**
+   * Decides ignore status for a path using the matcher of the root that
+   * contains it, so anchored rules (`/dist/**`) in one multi-root folder
+   * never prune another folder's files. Paths outside every root are never
+   * ignored (explicit picks, containment-guarded candidates only).
+   */
+  private isIgnored(absolutePath: string, relPosixPath: string, ctx: BuildContext): boolean {
+    const root = this.deps.workspace.rootFor(absolutePath);
+    if (root === undefined) return false;
+    return ctx.ignoreByRoot.get(dedupeKey(root))?.isIgnored(relPosixPath) ?? false;
+  }
+
+  /**
+   * Builds one matcher per workspace root: that root's own `.gitignore`
+   * lines first, then the user's `codesheaf.exclude` globs (last rule wins,
+   * so explicit configuration beats gitignore on ties). Nested
+   * `.gitignore` files are not read — a documented limitation (ADR-0005).
+   */
+  private async buildIgnoreMatchers(options: BundleOptions): Promise<Map<string, IgnoreMatcher>> {
+    const matchers = new Map<string, IgnoreMatcher>();
+    for (const root of this.deps.workspace.roots()) {
+      const patterns: string[] = [];
+      if (options.respectGitignore) {
         const read = await this.deps.fs.readText(
           nodePath.join(root, '.gitignore'),
           Number.MAX_SAFE_INTEGER,
         );
         if (read.ok) patterns.push(...read.content.split(/\r?\n/));
       }
+      // User exclude patterns come last: on ties, explicit configuration wins.
+      patterns.push(...options.exclude);
+      matchers.set(dedupeKey(root), IgnoreMatcher.fromPatterns(patterns));
     }
-    // User exclude patterns come last: on ties, explicit configuration wins.
-    patterns.push(...options.exclude);
-    return IgnoreMatcher.fromPatterns(patterns);
+    return matchers;
   }
 
   private assemble(ctx: BuildContext, options: BundleOptions): ContextBundle {

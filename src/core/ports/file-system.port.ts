@@ -38,4 +38,10 @@ export interface WorkspacePort {
   roots(): readonly string[];
   /** Workspace-relative POSIX path, or `undefined` when outside the workspace. */
   relativePath(absolutePath: string): string | undefined;
+  /**
+   * The root that contains this path, or `undefined` when outside every
+   * root. Multi-root workspaces isolate per-root rules (e.g. each root's
+   * `.gitignore` must not leak into the other roots).
+   */
+  rootFor(absolutePath: string): string | undefined;
 }

@@ -325,6 +325,51 @@ describe('BundleBuilder', () => {
     expect(bundle.files).toHaveLength(0);
   });
 
+  it('isolates gitignore rules per workspace root (multi-root)', async () => {
+    const DRIVE = PROJECT_ROOT.split('/')[0];
+    // "vendored" keeps the fixtures clear of the built-in default excludes
+    // (build/** is always excluded, which would mask the isolation).
+    const multiRootFiles: Record<string, string> = {
+      [`${DRIVE}/alpha/.gitignore`]: '/vendored\n',
+      [`${DRIVE}/alpha/vendored/generated.ts`]: 'export const a = 1;\n',
+      [`${DRIVE}/alpha/src/main.ts`]: 'import { b } from "./b";\nexport const m = 1;\n',
+      [`${DRIVE}/alpha/src/b.ts`]: 'export const b = 2;\n',
+      [`${DRIVE}/beta/vendored/b.ts`]: 'export const b = 3;\n',
+    };
+    const { builder } = makeBuilder(multiRootFiles, [`${DRIVE}/alpha`, `${DRIVE}/beta`]);
+    // Directory expansion applies ignore rules (unlike explicit file picks).
+    const bundle = await builder.build(
+      [
+        { kind: 'directory', absolutePath: `${DRIVE}/alpha` },
+        { kind: 'directory', absolutePath: `${DRIVE}/beta` },
+      ],
+      options(),
+    );
+    const paths = bundle.files.map((f) => f.path).sort();
+    // alpha's anchored /vendored prunes alpha/vendored — but must not reach
+    // into beta, whose vendored/b.ts is kept. (The root .gitignore file
+    // itself is an ordinary file and is woven.)
+    expect(paths).toEqual(['.gitignore', 'src/b.ts', 'src/main.ts', 'vendored/b.ts']);
+  });
+
+  it('applies user exclude globs to every workspace root', async () => {
+    const DRIVE = PROJECT_ROOT.split('/')[0];
+    const multiRootFiles: Record<string, string> = {
+      [`${DRIVE}/alpha/x.log`]: 'noise\n',
+      [`${DRIVE}/beta/y.log`]: 'noise\n',
+      [`${DRIVE}/beta/keep.ts`]: 'export const k = 1;\n',
+    };
+    const { builder } = makeBuilder(multiRootFiles, [`${DRIVE}/alpha`, `${DRIVE}/beta`]);
+    const bundle = await builder.build(
+      [
+        { kind: 'directory', absolutePath: `${DRIVE}/alpha` },
+        { kind: 'directory', absolutePath: `${DRIVE}/beta` },
+      ],
+      options({ exclude: ['*.log'] }),
+    );
+    expect(bundle.files.map((f) => f.path)).toEqual(['keep.ts']);
+  });
+
   it('renders a tree and totals in the final bundle', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build([file(`${PROJECT_ROOT}/src/a.ts`)], options());

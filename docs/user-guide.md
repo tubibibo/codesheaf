@@ -65,8 +65,10 @@ separator lines.
 - **Explicitly picked files bypass ignore rules** — if you right-click it,
   you get it (like an `@`-mention in a prompt).
 - **Import-discovered and directory-expanded files respect ignore rules**:
-  workspace `.gitignore` files plus the `codesheaf.exclude` globs (last rule
-  wins, so your exclude list can override gitignore).
+  each workspace root's own top-level `.gitignore` (rules never leak across
+  roots in multi-root workspaces) plus the `codesheaf.exclude` globs (last
+  rule wins, so your exclude list can override gitignore). Nested
+  `.gitignore` files in subdirectories are not read.
 - Files that cannot be woven are reported with a precise reason instead of
   failing the bundle: `ignored`, `binary`, `too-large`, `not-found`,
   `unreadable`, `empty-selection`, `depth-limit`, `limit-reached`.

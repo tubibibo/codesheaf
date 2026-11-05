@@ -13,4 +13,9 @@ export class VsCodeWorkspace implements WorkspacePort {
     if (folder === undefined) return undefined;
     return vscode.workspace.asRelativePath(uri, false);
   }
+
+  rootFor(absolutePath: string): string | undefined {
+    const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(absolutePath));
+    return folder?.uri.fsPath;
+  }
 }
