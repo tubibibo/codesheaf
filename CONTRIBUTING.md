@@ -40,6 +40,12 @@ Debugging in the editor: press **F5** ("Run CodeSheaf Extension").
 5. **Architecturally significant decisions need an ADR** in `docs/adr/`
    (next free number, never edit an accepted ADR).
 
+## Branches
+
+- Feature branches off `main`; PRs target `main`.
+- `main` stays green: CI runs the full gate (typecheck ×2, lint, format
+  check, tests with coverage, compile, packaging) on every push and PR.
+
 ## Commits and PRs
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/)

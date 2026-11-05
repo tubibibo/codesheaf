@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **把文件、选区及其导入依赖打包成 LLM 就绪的上下文——就在编辑器里完成。**
-零运行时依赖，核心层 100% 单元测试覆盖。
+零运行时依赖，核心层单元测试语句覆盖率约 98%。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -92,9 +92,10 @@ src/
 
 ```bash
 npm install
-npm run build      # typecheck + lint + test + compile
-npm run package    # 追加 .vsix 打包
-npm run test:watch # 修改核心时的快速反馈
+npm run build           # typecheck + lint + test + compile
+npm run package         # 追加 .vsix 打包
+npm run test:coverage   # 带覆盖率门槛（80/75/80/80）的测试
+npm run test:watch      # 修改核心时的快速反馈
 ```
 
 欢迎贡献，见 [CONTRIBUTING.md](CONTRIBUTING.md)。架构规则（核心纯净、零运行时依赖）由 CI 强制执行。

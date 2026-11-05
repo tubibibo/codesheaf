@@ -116,9 +116,10 @@ Decision log: [docs/adr/](docs/adr/) · Direction research:
 
 ```bash
 npm install
-npm run build      # typecheck + lint + test + compile
-npm run package    # + .vsix packaging
-npm run test:watch # fast feedback while hacking on the core
+npm run build           # typecheck + lint + test + compile
+npm run package         # + .vsix packaging
+npm run test:coverage   # tests with the coverage gates (80/75/80/80)
+npm run test:watch      # fast feedback while hacking on the core
 ```
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The
