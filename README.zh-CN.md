@@ -1,8 +1,7 @@
 # 🌾 CodeSheaf — LLM 上下文打包器
 
-[![CI](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml/badge.svg)](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml)
+[![CI](https://github.com/tubibibo/codesheaf/actions/workflows/ci.yml/badge.svg)](https://github.com/tubibibo/codesheaf/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/visual-studio-marketplace/v/codesheaf-tools.codesheaf)](https://marketplace.visualstudio.com/items?itemName=codesheaf-tools.codesheaf)
 
 **把文件、选区及其导入依赖打包成 LLM 就绪的上下文——就在编辑器里完成。**
 零运行时依赖，核心层 100% 单元测试覆盖。
@@ -37,7 +36,7 @@ code --install-extension codesheaf-1.0.0.vsix
 **从源码运行**：
 
 ```bash
-git clone https://github.com/your-github-username/codesheaf.git
+git clone https://github.com/tubibibo/codesheaf.git
 cd codesheaf && npm install
 # 在 VS Code 中按 F5 启动扩展开发宿主
 ```

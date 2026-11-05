@@ -7,7 +7,7 @@ opening a PR.
 ## Development setup
 
 ```bash
-git clone https://github.com/your-github-username/codesheaf.git
+git clone https://github.com/tubibibo/codesheaf.git
 cd codesheaf
 npm install
 npm run build     # typecheck + lint + tests + compile

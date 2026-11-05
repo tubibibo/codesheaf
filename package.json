@@ -7,12 +7,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-github-username/codesheaf.git"
+    "url": "https://github.com/tubibibo/codesheaf.git"
   },
   "bugs": {
-    "url": "https://github.com/your-github-username/codesheaf/issues"
+    "url": "https://github.com/tubibibo/codesheaf/issues"
   },
-  "homepage": "https://github.com/your-github-username/codesheaf#readme",
+  "homepage": "https://github.com/tubibibo/codesheaf#readme",
   "keywords": [
     "llm",
     "ai",

@@ -1,9 +1,7 @@
 # 🌾 CodeSheaf — LLM Context Bundler
 
-[![CI](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml/badge.svg)](https://github.com/your-github-username/codesheaf/actions/workflows/ci.yml)
+[![CI](https://github.com/tubibibo/codesheaf/actions/workflows/ci.yml/badge.svg)](https://github.com/tubibibo/codesheaf/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/visual-studio-marketplace/v/codesheaf-tools.codesheaf)](https://marketplace.visualstudio.com/items?itemName=codesheaf-tools.codesheaf)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/codesheaf-tools.codesheaf)](https://marketplace.visualstudio.com/items?itemName=codesheaf-tools.codesheaf)
 
 **Bundle files, selections and their import dependencies into LLM-ready
 context — right from your editor.** Zero runtime dependencies. Fully
@@ -56,7 +54,7 @@ code --install-extension codesheaf-1.0.0.vsix
 **From source**:
 
 ```bash
-git clone https://github.com/your-github-username/codesheaf.git
+git clone https://github.com/tubibibo/codesheaf.git
 cd codesheaf && npm install
 # Press F5 in VS Code to launch an Extension Development Host
 ```
