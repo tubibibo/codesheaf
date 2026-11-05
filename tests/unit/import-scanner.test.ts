@@ -118,7 +118,9 @@ describe('PythonImportStrategy', () => {
   });
 
   it('drops as-aliases and star imports from name lists', () => {
-    const paths = norm(strategy.extractImports('from . import x as y, *\n', `${PROJECT_ROOT}/a.py`));
+    const paths = norm(
+      strategy.extractImports('from . import x as y, *\n', `${PROJECT_ROOT}/a.py`),
+    );
     expect(paths).toContain(`absolute:${PROJECT_ROOT}/x.py`);
     expect(paths.some((p) => p.endsWith('/y.py'))).toBe(false);
     expect(paths).toHaveLength(3); // x.py + x/__init__.py + the package's own __init__.py

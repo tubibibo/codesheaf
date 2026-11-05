@@ -501,7 +501,12 @@ function sliceLines(content: string, startLine: number, endLine: number): string
  */
 function commonAncestor(paths: readonly string[]): string | undefined {
   if (paths.length === 0) return undefined;
-  const parts = paths.map((p) => nodePath.resolve(p).split(/[\\/]/).filter((s) => s.length > 0));
+  const parts = paths.map((p) =>
+    nodePath
+      .resolve(p)
+      .split(/[\\/]/)
+      .filter((s) => s.length > 0),
+  );
   const first = parts[0];
   if (first === undefined || first.length === 0) return undefined;
   const prefix: string[] = [];
