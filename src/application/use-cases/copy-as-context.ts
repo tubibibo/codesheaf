@@ -27,42 +27,45 @@ export interface CopyResult {
  * Use case: weave the given inputs into a bundle and copy the rendered
  * text to the clipboard. Returns `undefined` when the user was already
  * notified about an empty or failed bundle.
+ *
+ * The whole body — clipboard write and notifications included — lives in
+ * one catch: command handlers invoke this as fire-and-forget (`void`), so
+ * no rejection may ever escape and become an unhandled rejection the user
+ * never sees.
  */
 export async function copyAsContext(
   deps: CopyUseCaseDeps,
   refs: readonly InputRef[],
   overrides: CopyOverrides = {},
 ): Promise<CopyResult | undefined> {
-  const options = resolveOptions(deps.config.getBundleOptions(), overrides);
-  let bundle: ContextBundle;
   try {
-    bundle = await deps.builder.build(refs, options);
+    const options = resolveOptions(deps.config.getBundleOptions(), overrides);
+    const bundle: ContextBundle = await deps.builder.build(refs, options);
+
+    if (bundle.files.length === 0) {
+      deps.notifier.showWarning(
+        'CodeSheaf: nothing to copy — every candidate file was skipped (ignored, binary, too large, or empty).',
+      );
+      return undefined;
+    }
+
+    await deps.clipboard.writeText(bundle.rendered);
+    const skippedNote = bundle.skipped.length > 0 ? ` (${bundle.skipped.length} skipped)` : '';
+    deps.notifier.showInformation(
+      `CodeSheaf: copied ${bundle.files.length} file(s) · ~${formatTokenCount(bundle.estimatedTokens)} tokens${skippedNote}`,
+    );
+    deps.logger.debug(`bundle: ${bundle.files.map((f) => f.path).join(', ')}`);
+    return {
+      fileCount: bundle.files.length,
+      estimatedTokens: bundle.estimatedTokens,
+      skippedCount: bundle.skipped.length,
+    };
   } catch (error) {
-    const message =
-      error instanceof BundleError ? error.message : `Failed to weave bundle: ${describe(error)}`;
+    const message = error instanceof BundleError ? error.message : describe(error);
     deps.logger.error(message);
     deps.notifier.showError(`CodeSheaf: ${message}`);
     return undefined;
   }
-
-  if (bundle.files.length === 0) {
-    deps.notifier.showWarning(
-      'CodeSheaf: nothing to copy — every candidate file was skipped (ignored, binary, too large, or empty).',
-    );
-    return undefined;
-  }
-
-  await deps.clipboard.writeText(bundle.rendered);
-  const skippedNote = bundle.skipped.length > 0 ? ` (${bundle.skipped.length} skipped)` : '';
-  deps.notifier.showInformation(
-    `CodeSheaf: copied ${bundle.files.length} file(s) · ~${formatTokenCount(bundle.estimatedTokens)} tokens${skippedNote}`,
-  );
-  deps.logger.debug(`bundle: ${bundle.files.map((f) => f.path).join(', ')}`);
-  return {
-    fileCount: bundle.files.length,
-    estimatedTokens: bundle.estimatedTokens,
-    skippedCount: bundle.skipped.length,
-  };
 }
 
 /** Merges configured options with per-command overrides. */

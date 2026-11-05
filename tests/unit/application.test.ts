@@ -25,7 +25,9 @@ const FIXTURES: Record<string, string> = {
 
 class FakeClipboard implements ClipboardPort {
   readonly texts: string[] = [];
+  failWith: Error | undefined;
   async writeText(text: string): Promise<void> {
+    if (this.failWith !== undefined) throw this.failWith;
     this.texts.push(text);
   }
 }
@@ -136,6 +138,17 @@ describe('copyAsContext', () => {
       },
     );
     expect(result?.fileCount).toBe(2);
+  });
+
+  it('reports clipboard failures instead of leaking an unhandled rejection', async () => {
+    const deps = makeDeps();
+    deps.clipboard.failWith = new Error('clipboard denied');
+    const result = await copyAsContext(deps.copy, [
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
+    ]);
+    expect(result).toBeUndefined();
+    expect(deps.clipboard.texts).toHaveLength(0);
+    expect(deps.notifier.errors[0]).toContain('clipboard denied');
   });
 });
 
