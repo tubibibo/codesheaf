@@ -30,6 +30,9 @@ export interface BundleBuilderDeps {
 /** Hard cap on files pulled in by a single directory input (performance guard). */
 export const MAX_DIRECTORY_FILES = 1000;
 
+/** Hard cap on directory nesting during expansion; bounds symlink-cycle walks. */
+export const MAX_DIRECTORY_DEPTH = 32;
+
 type FileRef = Extract<InputRef, { kind: 'file' }>;
 type SelectionRef = Extract<InputRef, { kind: 'selection' }>;
 
@@ -237,31 +240,49 @@ export class BundleBuilder {
     };
   }
 
-  /** Walks a directory breadth-first, pruning ignored subtrees and capping the file count. */
+  /**
+   * Walks a directory breadth-first, pruning ignored subtrees and capping
+   * the file count. Two guards keep pathological trees finite:
+   *
+   * - a visited set (normalized paths) stops the same literal directory
+   *   from being listed twice;
+   * - a depth cap stops symlinked cycles (A → B → A), whose joined paths
+   *   grow on every level and therefore never repeat as strings — a
+   *   path-keyed visited set alone cannot catch them.
+   */
   private async expandDirectory(
     rootDir: string,
     ctx: BuildContext,
     out: WorkingFile[],
   ): Promise<void> {
-    const queue: string[] = [rootDir];
+    const queue: { dir: string; depth: number }[] = [{ dir: rootDir, depth: 0 }];
+    const visited = new Set<string>([dedupeKey(rootDir)]);
     let collected = 0;
     while (queue.length > 0) {
-      const dir = queue.shift();
-      if (dir === undefined) break;
+      const current = queue.shift();
+      if (current === undefined) break;
       let entries;
       try {
-        entries = await this.deps.fs.listDir(dir);
+        entries = await this.deps.fs.listDir(current.dir);
       } catch {
-        this.recordSkip(dir, 'unreadable', ctx);
+        this.recordSkip(current.dir, 'unreadable', ctx);
         continue;
       }
       for (const entry of entries) {
-        const abs = nodePath.join(dir, entry.name);
+        const abs = nodePath.join(current.dir, entry.name);
         const rel = this.deps.workspace.relativePath(abs);
         if (rel === undefined) continue;
         if (ctx.options.respectGitignore && ctx.ignore.isIgnored(rel)) continue;
         if (entry.isDirectory) {
-          queue.push(abs);
+          if (current.depth + 1 > MAX_DIRECTORY_DEPTH) {
+            this.recordSkip(rootDir, 'limit-reached', ctx);
+            continue;
+          }
+          const key = dedupeKey(abs);
+          if (!visited.has(key)) {
+            visited.add(key);
+            queue.push({ dir: abs, depth: current.depth + 1 });
+          }
           continue;
         }
         if (collected >= MAX_DIRECTORY_FILES) {

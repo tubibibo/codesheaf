@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_BUNDLE_OPTIONS, type BundleOptions, type InputRef } from '../../src/core';
+import {
+  DEFAULT_BUNDLE_OPTIONS,
+  type BundleOptions,
+  type DirectoryEntry,
+  type FileReadResult,
+  type FileSystemPort,
+  type InputRef,
+} from '../../src/core';
 import { BundleError } from '../../src/core/domain/errors';
+import { BundleBuilder } from '../../src/core/services/bundle-builder';
+import { ImportScannerService } from '../../src/core/services/scan/import-scanner';
+import { BUILT_IN_STRATEGIES } from '../../src/core/services/scan/strategies';
+import { InMemoryWorkspace } from '../support/fake-fs';
 import { makeBuilder } from '../support/harness';
 
 const FIXTURES: Record<string, string> = {
@@ -198,5 +209,42 @@ describe('BundleBuilder', () => {
   it('rejects empty input lists', async () => {
     const { builder } = makeBuilder(FIXTURES);
     await expect(builder.build([], options())).rejects.toBeInstanceOf(BundleError);
+  });
+
+  it('terminates on cyclic directory trees (symlink loop guard)', async () => {
+    // A→B→A directory cycle: joined paths grow on every level, so a
+    // path-keyed visited set never repeats — the depth cap is what bounds
+    // the walk; neither guard alone terminates cycles.
+    class CyclicDirectoryFileSystem implements FileSystemPort {
+      async exists(): Promise<boolean> {
+        return false;
+      }
+      async readText(): Promise<FileReadResult> {
+        return { ok: false, reason: 'not-found' };
+      }
+      async listDir(dir: string): Promise<readonly DirectoryEntry[]> {
+        return dir.endsWith('/A')
+          ? [
+              { name: 'B', isDirectory: true },
+              { name: 'a.txt', isDirectory: false },
+            ]
+          : [
+              { name: 'A', isDirectory: true },
+              { name: 'b.txt', isDirectory: false },
+            ];
+      }
+    }
+    const builder = new BundleBuilder({
+      workspace: new InMemoryWorkspace('C:/proj'),
+      fs: new CyclicDirectoryFileSystem(),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build(
+      [{ kind: 'directory', absolutePath: 'C:/proj/A' }],
+      options(),
+    );
+    expect(bundle.files).toHaveLength(0);
+    expect(bundle.skipped.length).toBeGreaterThan(0);
+    expect(bundle.skipped.some((s) => s.reason === 'limit-reached')).toBe(true);
   });
 });
