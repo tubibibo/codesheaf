@@ -131,20 +131,8 @@
           "items": {
             "type": "string"
           },
-          "default": [
-            "node_modules/**",
-            "dist/**",
-            "out/**",
-            "build/**",
-            "coverage/**",
-            ".git/**",
-            "**/*.min.js",
-            "**/*.map",
-            "**/package-lock.json",
-            "**/pnpm-lock.yaml",
-            "**/yarn.lock"
-          ],
-          "description": "Extra exclude globs (gitignore syntax) applied on top of `.gitignore`."
+          "default": [],
+          "description": "Extra exclude globs; applied after the built-in defaults and .gitignore rules."
         },
         "codesheaf.statusBar.enabled": {
           "type": "boolean",

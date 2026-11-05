@@ -70,7 +70,7 @@ export interface BundleOptions {
   readonly exclude: readonly string[];
 }
 
-/** Glob patterns always excluded, merged with (not replaced by) user config. */
+/** Glob patterns always excluded, before any user patterns (see {@link resolveExcludePatterns}). */
 export const DEFAULT_EXCLUDES: readonly string[] = [
   'node_modules/**',
   'dist/**',
@@ -84,6 +84,18 @@ export const DEFAULT_EXCLUDES: readonly string[] = [
   '**/pnpm-lock.yaml',
   '**/yarn.lock',
 ];
+
+/**
+ * Merges the built-in default excludes with user-provided patterns.
+ *
+ * VS Code returns the user's array verbatim when a setting is present — it
+ * never merges with the manifest default — so the merge has to happen here.
+ * Defaults come first and user patterns last: the ignore matcher is
+ * last-rule-wins, so a user `!node_modules/**` can re-include a default.
+ */
+export function resolveExcludePatterns(user: readonly string[]): readonly string[] {
+  return [...DEFAULT_EXCLUDES, ...user];
+}
 
 export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
   format: 'markdown',

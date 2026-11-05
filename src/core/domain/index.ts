@@ -9,5 +9,5 @@ export type {
   SkipReason,
   SkippedEntry,
 } from './bundle';
-export { DEFAULT_BUNDLE_OPTIONS, DEFAULT_EXCLUDES } from './bundle';
+export { DEFAULT_BUNDLE_OPTIONS, DEFAULT_EXCLUDES, resolveExcludePatterns } from './bundle';
 export { BundleError } from './errors';
