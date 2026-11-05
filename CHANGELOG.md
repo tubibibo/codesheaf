@@ -25,7 +25,7 @@ Dependencies`, `Copy Selection as Context`, `Preview Context Bundle`,
   `Copy as LLM Context` (Explorer multi-select, folders expandable).
 - Hexagonal architecture: platform-agnostic `src/core` + `src/application`
   layers (enforced by ESLint), VS Code adapters, single composition root.
-- 90 unit tests covering the core and application layers; CI on Node 20/22
+- 117 unit tests covering the core and application layers; CI on Node 20/22
   with coverage gates; zero runtime npm dependencies.
 
 ### Fixed
