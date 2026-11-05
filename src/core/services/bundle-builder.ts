@@ -17,7 +17,7 @@ import type { ResolvedCandidate } from './scan/import-scanner';
 import { ImportScannerService } from './scan/import-scanner';
 import { renderFileTree } from './tree-renderer';
 import { estimateTokens } from './token-estimator';
-import { dedupeKey } from '../utils/paths';
+import { dedupeKey, hasDotDotSegment } from '../utils/paths';
 import { languageIdForPath } from '../utils/languages';
 import { CODESHEAF_VERSION } from '../../version';
 
@@ -170,9 +170,15 @@ export class BundleBuilder {
       // outside the project. Explicit user inputs do not go through here.
       return this.isInsideWorkspace(candidate.path) ? candidate.path : undefined;
     }
+    // Root-relative paths are relative to a workspace root by definition,
+    // so any `..` segment in them is malformed and could escape (defense in
+    // depth: the strategies already reject such specifiers).
+    if (hasDotDotSegment(candidate.path)) return undefined;
     for (const root of this.deps.workspace.roots()) {
       const abs = nodePath.join(root, candidate.path);
-      if (await this.deps.fs.exists(abs)) return abs;
+      if (!(await this.deps.fs.exists(abs))) continue;
+      if (!this.isInsideWorkspace(abs)) continue;
+      return abs;
     }
     return undefined;
   }

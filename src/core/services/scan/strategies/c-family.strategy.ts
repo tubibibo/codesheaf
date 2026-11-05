@@ -1,6 +1,7 @@
 import * as nodePath from 'node:path';
 import { stripCStyleComments } from '../../../utils/text';
 import type { ImportLanguageStrategy, ResolvedCandidate } from '../import-scanner';
+import { hasDotDotSegment } from '../../../utils/paths';
 
 /**
  * C / C++ strategy. Quoted includes (`#include "util.h"`) resolve against
@@ -29,6 +30,9 @@ export class CFamilyImportStrategy implements ImportLanguageStrategy {
     for (const specifier of specifiers) {
       const base = nodePath.resolve(dir, specifier);
       for (const ext of headerExtensions) out.push({ kind: 'absolute', path: base + ext });
+      // Root-relative candidates are only meaningful for specifiers that do
+      // not traverse upwards; a `../` path is not a root-relative path.
+      if (hasDotDotSegment(specifier)) continue;
       for (const ext of headerExtensions)
         out.push({ kind: 'root-relative', path: specifier + ext });
     }

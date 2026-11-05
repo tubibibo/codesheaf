@@ -20,8 +20,11 @@ const FIXTURES: Record<string, string> = {
   [`${PROJECT_ROOT}/src/c.ts`]: 'import "./b";\nexport const c = 3;\n',
   [`${PROJECT_ROOT}/src/d.ts`]: 'import { x } from "../node_modules/lib";\nexport const d = 4;\n',
   [`${PROJECT_ROOT}/src/escape.ts`]: 'import s from "../../outside/secret";\nexport const e = 1;\n',
+  [`${PROJECT_ROOT}/src/main.c`]:
+    '#include "../../outside/secret.h"\nint main(void) { return 0; }\n',
   [`${PROJECT_ROOT}/src/lines.txt`]: 'one\ntwo\nthree\n',
   [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n',
+  [`${OUTSIDE_ROOT}/secret.h`]: '#pragma once\n',
   [`${PROJECT_ROOT}/node_modules/lib.js`]: 'module.exports = 1;\n',
   [`${PROJECT_ROOT}/.gitignore`]: 'node_modules/\nsecrets/\n*.secret\n',
   [`${PROJECT_ROOT}/secrets/key.txt`]: 'hidden\n',
@@ -92,6 +95,15 @@ describe('BundleBuilder', () => {
     expect(bundle.files.map((f) => f.path)).toEqual(['src/escape.ts']);
     expect(bundle.skipped.some((s) => s.path.includes('outside'))).toBe(false);
     expect(bundle.skipped.some((s) => s.reason === 'not-found')).toBe(false);
+  });
+
+  it('never weaves root-relative candidates that traverse outside (C include)', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/main.c`)], options());
+    // c-family duplicates every specifier as a root-relative candidate;
+    // '../../outside/secret.h' must not escape through that branch either.
+    expect(bundle.files.map((f) => f.path)).toEqual(['src/main.c']);
+    expect(bundle.skipped.some((s) => s.path.includes('outside'))).toBe(false);
   });
 
   it('keeps allowing explicitly picked files from outside the workspace', async () => {
@@ -204,6 +216,7 @@ describe('BundleBuilder', () => {
       'src/d.ts',
       'src/escape.ts',
       'src/lines.txt',
+      'src/main.c',
     ]);
   });
 

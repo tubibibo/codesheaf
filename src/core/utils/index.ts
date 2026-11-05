@@ -8,5 +8,5 @@ export {
 } from './text';
 export { formatTokenCount } from './format';
 export { isProbablyBinary } from './binary';
-export { dedupeKey } from './paths';
+export { dedupeKey, hasDotDotSegment } from './paths';
 export { languageIdForPath } from './languages';

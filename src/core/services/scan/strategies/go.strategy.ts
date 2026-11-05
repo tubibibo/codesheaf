@@ -1,6 +1,7 @@
 import * as nodePath from 'node:path';
 import { stripCStyleComments } from '../../../utils/text';
 import type { ImportLanguageStrategy, ResolvedCandidate } from '../import-scanner';
+import { hasDotDotSegment } from '../../../utils/paths';
 
 /**
  * Go strategy. Reads both single (`import "x"`) and block (`import ( ... )`)
@@ -46,7 +47,7 @@ export class GoImportStrategy implements ImportLanguageStrategy {
       if (specifier.startsWith('./') || specifier.startsWith('../')) {
         const base = nodePath.resolve(dir, specifier);
         out.push({ kind: 'absolute', path: base.endsWith('.go') ? base : `${base}.go` });
-      } else {
+      } else if (!hasDotDotSegment(specifier)) {
         out.push({
           kind: 'root-relative',
           path: specifier.endsWith('.go') ? specifier : `${specifier}.go`,

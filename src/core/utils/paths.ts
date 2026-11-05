@@ -1,3 +1,11 @@
+/** True when any path segment is exactly `..` (traversal, not a name). */
+export function hasDotDotSegment(path: string): boolean {
+  return path
+    .replace(/\\/g, '/')
+    .split('/')
+    .some((segment) => segment === '..');
+}
+
 /**
  * Normalizes an absolute path into a stable deduplication key. Windows paths
  * are case-insensitive and may mix separators, so they are lower-cased and
