@@ -88,6 +88,14 @@ describe('PythonImportStrategy', () => {
       strategy.extractImports('from __future__ import annotations\n', `${PROJECT_ROOT}/a.py`),
     ).toHaveLength(0);
   });
+
+  it('produces only the package __init__ for "from . import x"', async () => {
+    const paths = norm(
+      strategy.extractImports('from . import helper\n', `${PROJECT_ROOT}/pkg/a.py`),
+    );
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/__init__.py`);
+    expect(paths.some((p) => p === `absolute:${PROJECT_ROOT}/pkg.py`)).toBe(false);
+  });
 });
 
 describe('JavaImportStrategy', () => {
@@ -104,6 +112,14 @@ describe('JavaImportStrategy', () => {
   it('skips wildcard imports', () => {
     const source = 'import com.example.*;\n';
     expect(strategy.extractImports(source, `${PROJECT_ROOT}/src/Main.java`)).toHaveLength(0);
+  });
+
+  it('maps inner-class imports to the declaring source file', () => {
+    // com.x.Outer.Inner lives in Outer.java, not Outer/Inner.java.
+    const source = 'import com.x.Outer.Inner;\n';
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/src/Main.java`));
+    expect(paths).toContain('root-relative:com/x/Outer.java');
+    expect(paths.some((p) => p.includes('Inner'))).toBe(false);
   });
 
   it('never scans inside comments', () => {

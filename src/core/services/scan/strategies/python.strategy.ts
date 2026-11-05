@@ -52,7 +52,9 @@ export class PythonImportStrategy implements ImportLanguageStrategy {
           .filter((s) => s.length > 0)
           .join('/');
         const base = modulePath.length > 0 ? nodePath.join(startDir, modulePath) : startDir;
-        out.push({ kind: 'absolute', path: `${base}.py` });
+        // `from . import x` names the package itself: only its __init__.py
+        // is a meaningful candidate (a sibling <pkg>.py is not).
+        if (modulePath.length > 0) out.push({ kind: 'absolute', path: `${base}.py` });
         out.push({ kind: 'absolute', path: nodePath.join(base, '__init__.py') });
       } else {
         const modulePath = specifier.split('.').join('/');

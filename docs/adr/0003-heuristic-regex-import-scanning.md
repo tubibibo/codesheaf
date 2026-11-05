@@ -33,5 +33,9 @@ comment-stripped, string-aware source text (see `stripCStyleComments` /
   docstring can be scanned and, if a matching file exists, woven into the
   bundle. Accepted: writing real imports inside docstrings is vanishingly
   rare, and fixing it properly means a Python-aware tokenizer.
+- Known limitation (.vue/.svelte): HTML comments (`<!-- ... -->`) are not
+  stripped by the C-style stripper, so an import written inside one could
+  be scanned. Accepted for now — removing it requires passing the language
+  id into every strategy and a second stripper, for a rare failure mode.
 - Import scans use the **full file content**, not the selection slice, so a
   deep selection still pulls its dependencies.
