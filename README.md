@@ -41,7 +41,7 @@ exactly the local dependencies that matter."**
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
   the core enforced by ESLint; 117 unit tests; ~98% statement coverage over
   the core/application layers;
-  **zero runtime npm dependencies** (the .vsix is ~61 KB).
+  **zero runtime npm dependencies** (the .vsix is ~63 KB).
 
 ## 🚀 Install
 
