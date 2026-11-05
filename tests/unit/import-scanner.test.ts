@@ -102,6 +102,14 @@ describe('JavaImportStrategy', () => {
     const source = 'import com.example.*;\n';
     expect(strategy.extractImports(source, 'C:/proj/src/Main.java')).toHaveLength(0);
   });
+
+  it('never scans inside comments', () => {
+    const source =
+      '// import com.ghost.Ghost;\n/* import com.ghost2.Ghost2; */\nimport com.real.Real;\n';
+    const paths = norm(strategy.extractImports(source, 'C:/proj/src/Main.java'));
+    expect(paths).toContain('root-relative:com/real/Real.java');
+    expect(paths.some((p) => p.includes('ghost'))).toBe(false);
+  });
 });
 
 describe('GoImportStrategy', () => {

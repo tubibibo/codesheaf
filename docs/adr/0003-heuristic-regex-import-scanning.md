@@ -28,5 +28,10 @@ comment-stripped, string-aware source text (see `stripCStyleComments` /
 - Known limitation: exotic syntax (macro-generated imports, non-standard
   loaders) can be missed. The failure mode is _fewer files in the bundle_,
   never a wrong or crashing bundle — acceptable for a heuristic helper.
+- Known limitation (Python): triple-quoted strings are not tracked as
+  strings by the hash-comment stripper — an import-looking line inside a
+  docstring can be scanned and, if a matching file exists, woven into the
+  bundle. Accepted: writing real imports inside docstrings is vanishingly
+  rare, and fixing it properly means a Python-aware tokenizer.
 - Import scans use the **full file content**, not the selection slice, so a
   deep selection still pulls its dependencies.
