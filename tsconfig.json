@@ -19,5 +19,5 @@
     "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "out", "tests", ".zcode"]
+  "exclude": ["node_modules", "out", "tests"]
 }

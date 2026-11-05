@@ -25,5 +25,24 @@ Dependencies`, `Copy Selection as Context`, `Preview Context Bundle`,
   `Copy as LLM Context` (Explorer multi-select, folders expandable).
 - Hexagonal architecture: platform-agnostic `src/core` + `src/application`
   layers (enforced by ESLint), VS Code adapters, single composition root.
-- 80 unit tests covering the core and application layers; CI on Node 20/22
+- 90 unit tests covering the core and application layers; CI on Node 20/22
   with coverage gates; zero runtime npm dependencies.
+
+### Fixed
+
+- `codesheaf.exclude` now merges with (instead of replacing) the built-in
+  default excludes; user patterns come last and may negate a default
+  (`!node_modules/**`).
+- The status-bar token meter appears right after startup
+  (`onStartupFinished` activation) and refreshes on content edits with a
+  250 ms debounce; background documents never trigger a recount.
+- Preview tabs use the language matching the bundle format
+  (markdown/xml/plaintext) and the docs no longer claim a read-only view —
+  untitled tabs are editable, which is now stated openly.
+- Files explicitly picked in the Explorer bypass ignore rules, matching the
+  editor commands and the README promise.
+- Import candidates are confined to workspace roots; crafted `../..` import
+  chains can no longer weave files from outside the project.
+- Directory traversal is bounded against symlink cycles (visited set +
+  depth cap); test sources are typechecked via `tsconfig.test.json`; CI
+  runs `prettier --check`.

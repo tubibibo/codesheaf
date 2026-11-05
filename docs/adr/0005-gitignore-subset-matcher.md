@@ -27,3 +27,15 @@ configuration wins ties.
   documented in the user guide; the escape hatch is `codesheaf.exclude`.
 - Explicitly picked files bypass ignore rules entirely (product decision:
   a user-chosen file is never silently dropped).
+- Known divergence from git, negation re-inclusion: with `dist/` +
+  `!dist/keep.js`, git keeps all of `dist/` excluded (it never descends
+  into an excluded directory), while our per-path walk re-includes
+  `keep.js` because last matching rule wins per path. Arguably the more
+  useful behavior for a bundler; recorded here so nobody mistakes it for
+  a bug.
+- Known divergence from git, directory-only patterns: a trailing-slash
+  pattern does not match the directory's own path
+  (`isIgnored('node_modules')` is `false` when the path is evaluated as a
+  file), so expansion still lists that directory once before pruning its
+  files individually. Correctness is unaffected — every file inside is
+  still matched — only one extra directory listing is spent.

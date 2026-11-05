@@ -24,11 +24,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
+      - name: Typecheck (src)
         run: npm run typecheck
+
+      - name: Typecheck (src + tests)
+        run: npm run typecheck:tests
 
       - name: Lint
         run: npm run lint
+
+      - name: Format check
+        run: npx prettier --check .
 
       - name: Unit tests (with coverage)
         run: npm run test:coverage
