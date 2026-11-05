@@ -44,7 +44,7 @@ export async function copyAsContext(
 
     if (bundle.files.length === 0) {
       deps.notifier.showWarning(
-        'CodeSheaf: nothing to copy — every candidate file was skipped (ignored, binary, too large, or empty).',
+        'CodeSheaf: nothing to copy — every candidate file was skipped (ignored, binary, too large, or unreadable).',
       );
       return undefined;
     }

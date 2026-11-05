@@ -1,7 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import * as vscode from 'vscode';
 import type { DirectoryEntry, FileReadResult, FileSystemPort } from '../../core/ports';
-import { isProbablyBinary } from '../../core/utils/binary';
+import { hasUtf16LeBom, isBinaryExtension, isProbablyBinary } from '../../core/utils/binary';
 
 const BINARY_SNIFF_BYTES = 8192;
 
@@ -34,7 +34,14 @@ export class VsCodeFileSystem implements FileSystemPort {
     }
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
-      if (isProbablyBinary(bytes)) return { ok: false, reason: 'binary' };
+      // UTF-16LE text is NUL-interleaved but genuinely text: decode it
+      // before the NUL sniff ever gets a chance to call it binary.
+      if (hasUtf16LeBom(bytes)) {
+        return { ok: true, content: new TextDecoder('utf-16le').decode(bytes) };
+      }
+      if (isProbablyBinary(bytes) || isBinaryExtension(absolutePath)) {
+        return { ok: false, reason: 'binary' };
+      }
       return { ok: true, content: new TextDecoder('utf-8').decode(bytes) };
     } catch {
       return { ok: false, reason: 'unreadable' };

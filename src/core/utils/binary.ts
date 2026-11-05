@@ -1,7 +1,81 @@
 /**
- * Heuristic binary sniffing: any NUL byte in the first 8 KiB marks the file
- * as binary. Cheap, dependency-free, and right in practice for the formats
- * developers bundle (source code, configs, text).
+ * Heuristic binary sniffing. Cheap, dependency-free, and right in practice
+ * for the formats developers bundle (source code, configs, text).
+ */
+
+/** Known binary file extensions — a cheap first line that NUL sniffing misses. */
+const BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.tiff',
+  '.tif',
+  '.pdf',
+  '.zip',
+  '.gz',
+  '.tgz',
+  '.bz2',
+  '.xz',
+  '.7z',
+  '.rar',
+  '.jar',
+  '.war',
+  '.class',
+  '.exe',
+  '.dll',
+  '.so',
+  '.dylib',
+  '.bin',
+  '.dat',
+  '.o',
+  '.a',
+  '.obj',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf',
+  '.eot',
+  '.mp3',
+  '.mp4',
+  '.avi',
+  '.mov',
+  '.mkv',
+  '.wav',
+  '.flac',
+  '.ogg',
+  '.webm',
+  '.sqlite',
+  '.db',
+  '.psd',
+  '.ai',
+  '.sketch',
+  '.xlsx',
+  '.docx',
+  '.pptx',
+]);
+
+/** True when the extension alone marks the file as binary. */
+export function isBinaryExtension(absolutePath: string): boolean {
+  const normalized = absolutePath.replace(/\\/g, '/');
+  const dot = normalized.lastIndexOf('.');
+  const slash = normalized.lastIndexOf('/');
+  if (dot === -1 || dot < slash) return false;
+  return BINARY_EXTENSIONS.has(normalized.slice(dot).toLowerCase());
+}
+
+/** True when the buffer starts with a UTF-16 little-endian BOM (FF FE). */
+export function hasUtf16LeBom(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe;
+}
+
+/**
+ * Any NUL byte in the first 8 KiB marks the file as binary. UTF-16LE files
+ * (NUL-interleaved but genuinely text) must be checked via
+ * {@link hasUtf16LeBom} *before* consulting this function.
  */
 export function isProbablyBinary(bytes: Uint8Array): boolean {
   const sampleEnd = Math.min(bytes.length, 8192);
