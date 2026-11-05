@@ -428,7 +428,12 @@ export class BundleBuilder {
   }
 }
 
-/** Slices a 1-based inclusive line range; returns `null` when nothing remains. */
+/**
+ * Slices a 1-based inclusive line range; returns `null` when nothing
+ * remains. Ranges that fall entirely outside the file (start beyond the
+ * last line, or end before the first) are empty selections, not clamps
+ * onto whatever happens to be the nearest line.
+ */
 function sliceLines(content: string, startLine: number, endLine: number): string | null {
   let lines = content.split('\n');
   // A trailing newline does not start a new (empty) line.
@@ -436,11 +441,13 @@ function sliceLines(content: string, startLine: number, endLine: number): string
     lines = lines.slice(0, -1);
   }
   const total = lines.length;
-  let start = Math.min(Math.max(Math.floor(startLine), 1), total);
-  let end = Math.min(Math.max(Math.floor(endLine), 1), total);
-  if (end < start) {
-    [start, end] = [end, start];
-  }
+  let start = Math.floor(startLine);
+  let end = Math.floor(endLine);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (start > end) [start, end] = [end, start];
+  if (start > total || end < 1) return null;
+  start = Math.max(start, 1);
+  end = Math.min(end, total);
   const sliced = lines.slice(start - 1, end).join('\n');
   return sliced.length > 0 ? sliced : null;
 }

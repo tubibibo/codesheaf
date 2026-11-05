@@ -315,7 +315,7 @@ describe('BundleBuilder', () => {
     expect(bundle.files[0]?.content).toBe('beta');
   });
 
-  it('clamps out-of-range selections', async () => {
+  it('clamps ranges that partially overhang the file', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
       [
@@ -329,6 +329,25 @@ describe('BundleBuilder', () => {
       options(),
     );
     expect(bundle.files[0]?.content).toBe('two\nthree');
+  });
+
+  it('treats fully out-of-range selections as empty', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    // start beyond the last line used to clamp onto line 3 and weave it;
+    // an entirely out-of-file range is an empty selection instead.
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'selection',
+          absolutePath: `${PROJECT_ROOT}/src/lines.txt`,
+          startLine: 99,
+          endLine: 100,
+        },
+      ],
+      options(),
+    );
+    expect(bundle.files).toHaveLength(0);
+    expect(bundle.skipped).toContainEqual({ path: 'src/lines.txt', reason: 'empty-selection' });
   });
 
   it('records empty selections as skipped', async () => {
