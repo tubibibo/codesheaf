@@ -33,6 +33,9 @@
     "node": ">=20"
   },
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
