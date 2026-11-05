@@ -11,24 +11,24 @@ import { BundleError } from '../../src/core/domain/errors';
 import { BundleBuilder } from '../../src/core/services/bundle-builder';
 import { ImportScannerService } from '../../src/core/services/scan/import-scanner';
 import { BUILT_IN_STRATEGIES } from '../../src/core/services/scan/strategies';
-import { InMemoryWorkspace } from '../support/fake-fs';
+import { InMemoryWorkspace, OUTSIDE_ROOT, PROJECT_ROOT } from '../support/fake-fs';
 import { makeBuilder } from '../support/harness';
 
 const FIXTURES: Record<string, string> = {
-  'C:/proj/src/a.ts': 'import { b } from "./b";\nexport const a = 1;\n',
-  'C:/proj/src/b.ts': 'import { c } from "./c";\nexport const b = 2;\n',
-  'C:/proj/src/c.ts': 'import "./b";\nexport const c = 3;\n',
-  'C:/proj/src/d.ts': 'import { x } from "../node_modules/lib";\nexport const d = 4;\n',
-  'C:/proj/src/escape.ts': 'import s from "../../outside/secret";\nexport const e = 1;\n',
-  'C:/proj/src/lines.txt': 'one\ntwo\nthree\n',
-  'C:/outside/secret.ts': 'SECRET\n',
-  'C:/proj/node_modules/lib.js': 'module.exports = 1;\n',
-  'C:/proj/.gitignore': 'node_modules/\nsecrets/\n*.secret\n',
-  'C:/proj/secrets/key.txt': 'hidden\n',
-  'C:/proj/secrets/deep/nested.txt': 'hidden too\n',
-  'C:/proj/keep.secret': 'explicitly requested\n',
-  'C:/proj/data.bin': 'text\x00with-nul\n',
-  'C:/proj/empty.txt': '',
+  [`${PROJECT_ROOT}/src/a.ts`]: 'import { b } from "./b";\nexport const a = 1;\n',
+  [`${PROJECT_ROOT}/src/b.ts`]: 'import { c } from "./c";\nexport const b = 2;\n',
+  [`${PROJECT_ROOT}/src/c.ts`]: 'import "./b";\nexport const c = 3;\n',
+  [`${PROJECT_ROOT}/src/d.ts`]: 'import { x } from "../node_modules/lib";\nexport const d = 4;\n',
+  [`${PROJECT_ROOT}/src/escape.ts`]: 'import s from "../../outside/secret";\nexport const e = 1;\n',
+  [`${PROJECT_ROOT}/src/lines.txt`]: 'one\ntwo\nthree\n',
+  [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n',
+  [`${PROJECT_ROOT}/node_modules/lib.js`]: 'module.exports = 1;\n',
+  [`${PROJECT_ROOT}/.gitignore`]: 'node_modules/\nsecrets/\n*.secret\n',
+  [`${PROJECT_ROOT}/secrets/key.txt`]: 'hidden\n',
+  [`${PROJECT_ROOT}/secrets/deep/nested.txt`]: 'hidden too\n',
+  [`${PROJECT_ROOT}/keep.secret`]: 'explicitly requested\n',
+  [`${PROJECT_ROOT}/data.bin`]: 'text\x00with-nul\n',
+  [`${PROJECT_ROOT}/empty.txt`]: '',
 };
 
 function options(overrides: Partial<BundleOptions> = {}): BundleOptions {
@@ -40,7 +40,7 @@ const file = (path: string): InputRef => ({ kind: 'file', absolutePath: path });
 describe('BundleBuilder', () => {
   it('follows relative imports breadth-first and marks their origin', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/a.ts')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/a.ts`)], options());
     expect(bundle.files.map((f) => f.path)).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts']);
     expect(bundle.files[0]?.origin).toBe('explicit');
     expect(bundle.files[1]?.origin).toBe('import');
@@ -49,7 +49,7 @@ describe('BundleBuilder', () => {
   it('deduplicates files discovered through several import paths', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [file('C:/proj/src/a.ts'), file('C:/proj/src/c.ts')],
+      [file(`${PROJECT_ROOT}/src/a.ts`), file(`${PROJECT_ROOT}/src/c.ts`)],
       options(),
     );
     const paths = bundle.files.map((f) => f.path);
@@ -60,27 +60,33 @@ describe('BundleBuilder', () => {
 
   it('stops following imports at maxImportDepth and records depth-limit skips', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/a.ts')], options({ maxImportDepth: 1 }));
+    const bundle = await builder.build(
+      [file(`${PROJECT_ROOT}/src/a.ts`)],
+      options({ maxImportDepth: 1 }),
+    );
     expect(bundle.files.map((f) => f.path)).toEqual(['src/a.ts', 'src/b.ts']);
     expect(bundle.skipped).toContainEqual({ path: 'src/c.ts', reason: 'depth-limit' });
   });
 
   it('disables import following entirely at depth 0', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/a.ts')], options({ maxImportDepth: 0 }));
+    const bundle = await builder.build(
+      [file(`${PROJECT_ROOT}/src/a.ts`)],
+      options({ maxImportDepth: 0 }),
+    );
     expect(bundle.files.map((f) => f.path)).toEqual(['src/a.ts']);
   });
 
   it('applies .gitignore rules to import-discovered files', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/d.ts')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/d.ts`)], options());
     expect(bundle.files.map((f) => f.path)).toEqual(['src/d.ts']);
     expect(bundle.skipped).toContainEqual({ path: 'node_modules/lib.js', reason: 'ignored' });
   });
 
   it('never weaves import candidates from outside the workspace', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/escape.ts')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/escape.ts`)], options());
     // The '../../outside/secret' import resolves outside the root: silently
     // dropped, not even a skip entry.
     expect(bundle.files.map((f) => f.path)).toEqual(['src/escape.ts']);
@@ -89,21 +95,21 @@ describe('BundleBuilder', () => {
   });
 
   it('keeps allowing explicitly picked files from outside the workspace', async () => {
-    const { builder } = makeBuilder({ 'C:/outside/secret.ts': 'SECRET\n' });
-    const bundle = await builder.build([file('C:/outside/secret.ts')], options());
+    const { builder } = makeBuilder({ [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n' });
+    const bundle = await builder.build([file(`${OUTSIDE_ROOT}/secret.ts`)], options());
     expect(bundle.files.map((f) => f.path)).toEqual(['secret.ts']);
   });
 
   it('bypasses ignore rules for explicitly picked files by default', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/keep.secret')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/keep.secret`)], options());
     expect(bundle.files.map((f) => f.path)).toEqual(['keep.secret']);
   });
 
   it('respects ignore rules for explicit files when the policy says so', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'file', absolutePath: 'C:/proj/keep.secret', ignorePolicy: 'respect' }],
+      [{ kind: 'file', absolutePath: `${PROJECT_ROOT}/keep.secret`, ignorePolicy: 'respect' }],
       options(),
     );
     expect(bundle.files).toHaveLength(0);
@@ -113,7 +119,7 @@ describe('BundleBuilder', () => {
   it('honors user exclude globs on top of .gitignore', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [file('C:/proj/src/a.ts')],
+      [file(`${PROJECT_ROOT}/src/a.ts`)],
       options({ exclude: ['src/b.ts'] }),
     );
     expect(bundle.files.map((f) => f.path)).toEqual(['src/a.ts']);
@@ -122,7 +128,7 @@ describe('BundleBuilder', () => {
 
   it('skips binary files with a precise reason', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/data.bin')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/data.bin`)], options());
     expect(bundle.files).toHaveLength(0);
     expect(bundle.skipped).toContainEqual({ path: 'data.bin', reason: 'binary' });
   });
@@ -130,7 +136,7 @@ describe('BundleBuilder', () => {
   it('skips files above the size cap', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [file('C:/proj/src/a.ts')],
+      [file(`${PROJECT_ROOT}/src/a.ts`)],
       options({ maxFileSizeKB: 0.001 }),
     );
     expect(bundle.skipped).toContainEqual({ path: 'src/a.ts', reason: 'too-large' });
@@ -138,7 +144,7 @@ describe('BundleBuilder', () => {
 
   it('reports missing files instead of throwing', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/ghost.ts')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/ghost.ts`)], options());
     expect(bundle.files).toHaveLength(0);
     expect(bundle.skipped).toContainEqual({ path: 'ghost.ts', reason: 'not-found' });
   });
@@ -146,7 +152,14 @@ describe('BundleBuilder', () => {
   it('slices selections as 1-based inclusive line ranges', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'selection', absolutePath: 'C:/proj/src/lines.txt', startLine: 2, endLine: 3 }],
+      [
+        {
+          kind: 'selection',
+          absolutePath: `${PROJECT_ROOT}/src/lines.txt`,
+          startLine: 2,
+          endLine: 3,
+        },
+      ],
       options(),
     );
     expect(bundle.files[0]?.content).toBe('two\nthree');
@@ -155,7 +168,14 @@ describe('BundleBuilder', () => {
   it('clamps out-of-range selections', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'selection', absolutePath: 'C:/proj/src/lines.txt', startLine: 2, endLine: 99 }],
+      [
+        {
+          kind: 'selection',
+          absolutePath: `${PROJECT_ROOT}/src/lines.txt`,
+          startLine: 2,
+          endLine: 99,
+        },
+      ],
       options(),
     );
     expect(bundle.files[0]?.content).toBe('two\nthree');
@@ -164,7 +184,7 @@ describe('BundleBuilder', () => {
   it('records empty selections as skipped', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'selection', absolutePath: 'C:/proj/empty.txt', startLine: 1, endLine: 1 }],
+      [{ kind: 'selection', absolutePath: `${PROJECT_ROOT}/empty.txt`, startLine: 1, endLine: 1 }],
       options(),
     );
     expect(bundle.skipped).toContainEqual({ path: 'empty.txt', reason: 'empty-selection' });
@@ -173,7 +193,7 @@ describe('BundleBuilder', () => {
   it('expands directories with ignore pruning', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'directory', absolutePath: 'C:/proj/src' }],
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/src` }],
       options(),
     );
     const paths = bundle.files.map((f) => f.path).sort();
@@ -190,7 +210,7 @@ describe('BundleBuilder', () => {
   it('prunes ignored directories entirely during expansion', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
-      [{ kind: 'directory', absolutePath: 'C:/proj/secrets' }],
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/secrets` }],
       options(),
     );
     expect(bundle.files).toHaveLength(0);
@@ -198,7 +218,7 @@ describe('BundleBuilder', () => {
 
   it('renders a tree and totals in the final bundle', async () => {
     const { builder } = makeBuilder(FIXTURES);
-    const bundle = await builder.build([file('C:/proj/src/a.ts')], options());
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/src/a.ts`)], options());
     expect(bundle.tree).toContain('src/');
     expect(bundle.rendered).toContain('## Project Tree');
     expect(bundle.totalChars).toBeGreaterThan(0);
@@ -235,12 +255,12 @@ describe('BundleBuilder', () => {
       }
     }
     const builder = new BundleBuilder({
-      workspace: new InMemoryWorkspace('C:/proj'),
+      workspace: new InMemoryWorkspace(`${PROJECT_ROOT}`),
       fs: new CyclicDirectoryFileSystem(),
       scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
     });
     const bundle = await builder.build(
-      [{ kind: 'directory', absolutePath: 'C:/proj/A' }],
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/A` }],
       options(),
     );
     expect(bundle.files).toHaveLength(0);

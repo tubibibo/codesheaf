@@ -14,12 +14,13 @@ import {
   type CopyUseCaseDeps,
   type PreviewUseCaseDeps,
 } from '../../src/application';
+import { PROJECT_ROOT } from '../support/fake-fs';
 import { makeBuilder } from '../support/harness';
 
 const FIXTURES: Record<string, string> = {
-  'C:/proj/src/a.ts': 'import { b } from "./b";\nexport const a = 1;\n',
-  'C:/proj/src/b.ts': 'export const b = 2;\n',
-  'C:/proj/data.bin': 'x\x00y\n',
+  [`${PROJECT_ROOT}/src/a.ts`]: 'import { b } from "./b";\nexport const a = 1;\n',
+  [`${PROJECT_ROOT}/src/b.ts`]: 'export const b = 2;\n',
+  [`${PROJECT_ROOT}/data.bin`]: 'x\x00y\n',
 };
 
 class FakeClipboard implements ClipboardPort {
@@ -100,7 +101,7 @@ describe('copyAsContext', () => {
   it('wires bundle output into the clipboard and reports a summary', async () => {
     const deps = makeDeps();
     const result = await copyAsContext(deps.copy, [
-      { kind: 'file', absolutePath: 'C:/proj/src/a.ts' },
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
     ]);
     expect(result).toEqual({ fileCount: 2, estimatedTokens: expect.any(Number), skippedCount: 0 });
     expect(deps.clipboard.texts[0]).toContain('## src/a.ts');
@@ -111,7 +112,7 @@ describe('copyAsContext', () => {
   it('warns instead of copying when everything was skipped', async () => {
     const deps = makeDeps();
     const result = await copyAsContext(deps.copy, [
-      { kind: 'file', absolutePath: 'C:/proj/data.bin' },
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/data.bin` },
     ]);
     expect(result).toBeUndefined();
     expect(deps.clipboard.texts).toHaveLength(0);
@@ -129,7 +130,7 @@ describe('copyAsContext', () => {
     const deps = makeDeps({ maxImportDepth: 0 });
     const result = await copyAsContext(
       deps.copy,
-      [{ kind: 'file', absolutePath: 'C:/proj/src/a.ts' }],
+      [{ kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` }],
       {
         ensureImportDepth: 3,
       },
@@ -142,7 +143,7 @@ describe('previewAsContext', () => {
   it('opens the rendered bundle in a preview editor', async () => {
     const deps = makeDeps();
     const ok = await previewAsContext(deps.preview, [
-      { kind: 'file', absolutePath: 'C:/proj/src/a.ts' },
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
     ]);
     expect(ok).toBe(true);
     expect(deps.previewPort.opened[0]?.languageId).toBe('markdown');
@@ -151,14 +152,18 @@ describe('previewAsContext', () => {
 
   it('previews xml bundles with xml highlighting', async () => {
     const deps = makeDeps({ format: 'xml' });
-    await previewAsContext(deps.preview, [{ kind: 'file', absolutePath: 'C:/proj/src/a.ts' }]);
+    await previewAsContext(deps.preview, [
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
+    ]);
     expect(deps.previewPort.opened[0]?.languageId).toBe('xml');
     expect(deps.previewPort.opened[0]?.content).toContain('<codesheaf');
   });
 
   it('previews plain bundles without highlighting', async () => {
     const deps = makeDeps({ format: 'plain' });
-    await previewAsContext(deps.preview, [{ kind: 'file', absolutePath: 'C:/proj/src/a.ts' }]);
+    await previewAsContext(deps.preview, [
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
+    ]);
     expect(deps.previewPort.opened[0]?.languageId).toBe('plaintext');
   });
 

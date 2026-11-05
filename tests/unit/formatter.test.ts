@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { BundledFile } from '../../src/core/domain/bundle';
 import { renderBundle, type RenderInput } from '../../src/core/services/formatter';
+import { PROJECT_ROOT } from '../support/fake-fs';
 
 function makeFile(overrides: Partial<BundledFile> = {}): BundledFile {
   return {
     path: 'src/a.ts',
-    absolutePath: 'C:/proj/src/a.ts',
+    absolutePath: `${PROJECT_ROOT}/src/a.ts`,
     languageId: 'typescript',
     content: 'const x = 1;',
     origin: 'explicit',

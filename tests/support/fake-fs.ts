@@ -12,10 +12,21 @@ export function normalizePath(p: string): string {
 }
 
 /**
- * In-memory FileSystemPort. Keys are absolute POSIX-style paths such as
- * `C:/proj/src/a.ts` (the drive prefix keeps `node:path` resolution stable
- * across Windows and Linux hosts). Content containing a NUL byte is treated
- * as binary, mirroring the production sniffing rule.
+ * Absolute project root for fixtures. It must be absolute for the *host's*
+ * `node:path`, or strategies would resolve relative specifiers against cwd:
+ * `C:/proj` on Windows, `/proj` on POSIX.
+ */
+const DRIVE = process.platform === 'win32' ? 'C:' : '';
+export const PROJECT_ROOT = `${DRIVE}/proj`;
+
+/** A sibling of PROJECT_ROOT, used to prove import containment. */
+export const OUTSIDE_ROOT = `${DRIVE}/outside`;
+
+/**
+ * In-memory FileSystemPort. Keys are absolute POSIX-style paths under
+ * PROJECT_ROOT (e.g. `/proj/src/a.ts`, `C:/proj/src/a.ts` on Windows).
+ * Content containing a NUL byte is treated as binary, mirroring the
+ * production sniffing rule.
  */
 export class InMemoryFileSystem implements FileSystemPort {
   private readonly files: ReadonlyMap<string, string>;

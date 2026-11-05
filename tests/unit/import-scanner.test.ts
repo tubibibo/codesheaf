@@ -7,6 +7,7 @@ import { PythonImportStrategy } from '../../src/core/services/scan/strategies/py
 import { JavaImportStrategy } from '../../src/core/services/scan/strategies/java.strategy';
 import { GoImportStrategy } from '../../src/core/services/scan/strategies/go.strategy';
 import { CFamilyImportStrategy } from '../../src/core/services/scan/strategies/c-family.strategy';
+import { PROJECT_ROOT } from '../support/fake-fs';
 
 const norm = (candidates: readonly ResolvedCandidate[]): string[] =>
   candidates.map((c) => `${c.kind}:${c.path.replace(/\\/g, '/')}`);
@@ -26,23 +27,25 @@ describe('TypeScriptImportStrategy', () => {
       'const lib = require("./legacy");',
       'const lazy = import("./lazy");',
     ].join('\n');
-    const paths = norm(strategy.extractImports(source, 'C:/proj/src/a.ts'));
-    expect(paths).toContain('absolute:C:/proj/src/b.ts');
-    expect(paths).toContain('absolute:C:/proj/src/multi.ts');
-    expect(paths).toContain('absolute:C:/proj/types/t.ts');
-    expect(paths).toContain('absolute:C:/proj/src/side-effect.ts');
-    expect(paths).toContain('absolute:C:/proj/src/reexport.ts');
-    expect(paths).toContain('absolute:C:/proj/src/legacy.js');
-    expect(paths).toContain('absolute:C:/proj/src/lazy.ts');
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/src/a.ts`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/b.ts`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/multi.ts`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/types/t.ts`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/side-effect.ts`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/reexport.ts`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/legacy.js`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/lazy.ts`);
   });
 
   it('probes extension and index variants in resolution order', () => {
-    const paths = norm(strategy.extractImports('import x from "./widget"', 'C:/proj/src/a.ts'));
-    expect(paths.indexOf('absolute:C:/proj/src/widget')).toBeLessThan(
-      paths.indexOf('absolute:C:/proj/src/widget.ts'),
+    const paths = norm(
+      strategy.extractImports('import x from "./widget"', `${PROJECT_ROOT}/src/a.ts`),
     );
-    expect(paths.indexOf('absolute:C:/proj/src/widget.ts')).toBeLessThan(
-      paths.indexOf('absolute:C:/proj/src/widget/index.ts'),
+    expect(paths.indexOf(`absolute:${PROJECT_ROOT}/src/widget`)).toBeLessThan(
+      paths.indexOf(`absolute:${PROJECT_ROOT}/src/widget.ts`),
+    );
+    expect(paths.indexOf(`absolute:${PROJECT_ROOT}/src/widget.ts`)).toBeLessThan(
+      paths.indexOf(`absolute:${PROJECT_ROOT}/src/widget/index.ts`),
     );
   });
 
@@ -50,12 +53,12 @@ describe('TypeScriptImportStrategy', () => {
     const source = `import React from "react";
 import { x } from "https://example.com/x";
 const fs = require("node:fs");`;
-    expect(strategy.extractImports(source, 'C:/proj/src/a.ts')).toHaveLength(0);
+    expect(strategy.extractImports(source, `${PROJECT_ROOT}/src/a.ts`)).toHaveLength(0);
   });
 
   it('never scans inside comments', () => {
     const source = '// import { ghost } from "./ghost";\n/* import { ghost2 } from "./ghost2"; */';
-    expect(strategy.extractImports(source, 'C:/proj/src/a.ts')).toHaveLength(0);
+    expect(strategy.extractImports(source, `${PROJECT_ROOT}/src/a.ts`)).toHaveLength(0);
   });
 });
 
@@ -64,16 +67,16 @@ describe('PythonImportStrategy', () => {
 
   it('resolves explicit relative imports against the importing file', () => {
     const source = 'from .util import helper\nfrom ..pkg.mod import thing\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/pkg/main.py'));
-    expect(paths).toContain('absolute:C:/proj/pkg/util.py');
-    expect(paths).toContain('absolute:C:/proj/pkg/util/__init__.py');
-    expect(paths).toContain('absolute:C:/proj/pkg/mod.py'); // ..pkg.mod
-    expect(paths).toContain('absolute:C:/proj/pkg/mod/__init__.py');
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/pkg/main.py`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/util.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/util/__init__.py`);
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/mod.py`); // ..pkg.mod
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/pkg/mod/__init__.py`);
   });
 
   it('turns absolute module imports into root-relative candidates', () => {
     const source = 'import os\nimport mypkg.tools, other\nfrom mypkg import deep\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/main.py'));
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/main.py`));
     expect(paths).toContain('root-relative:os.py');
     expect(paths).toContain('root-relative:mypkg/tools.py');
     expect(paths).toContain('root-relative:other.py');
@@ -82,7 +85,7 @@ describe('PythonImportStrategy', () => {
 
   it('skips __future__', () => {
     expect(
-      strategy.extractImports('from __future__ import annotations\n', 'C:/proj/a.py'),
+      strategy.extractImports('from __future__ import annotations\n', `${PROJECT_ROOT}/a.py`),
     ).toHaveLength(0);
   });
 });
@@ -93,20 +96,20 @@ describe('JavaImportStrategy', () => {
   it('maps package imports to root-relative java paths', () => {
     const source =
       'package com.x;\n\nimport com.example.app.Service;\nimport static com.example.Util.MAX;\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/src/Main.java'));
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/src/Main.java`));
     expect(paths).toContain('root-relative:com/example/app/Service.java');
     expect(paths).toContain('root-relative:com/example/Util.java');
   });
 
   it('skips wildcard imports', () => {
     const source = 'import com.example.*;\n';
-    expect(strategy.extractImports(source, 'C:/proj/src/Main.java')).toHaveLength(0);
+    expect(strategy.extractImports(source, `${PROJECT_ROOT}/src/Main.java`)).toHaveLength(0);
   });
 
   it('never scans inside comments', () => {
     const source =
       '// import com.ghost.Ghost;\n/* import com.ghost2.Ghost2; */\nimport com.real.Real;\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/src/Main.java'));
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/src/Main.java`));
     expect(paths).toContain('root-relative:com/real/Real.java');
     expect(paths.some((p) => p.includes('ghost'))).toBe(false);
   });
@@ -118,15 +121,15 @@ describe('GoImportStrategy', () => {
   it('reads block and single imports', () => {
     const source =
       'package main\n\nimport (\n\t"fmt"\n\tappUtil "myapp/internal/util"\n)\n\nimport extra "myapp/extra"\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/cmd/main.go'));
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/cmd/main.go`));
     expect(paths).toContain('root-relative:fmt.go');
     expect(paths).toContain('root-relative:myapp/internal/util.go');
     expect(paths).toContain('root-relative:myapp/extra.go');
   });
 
   it('resolves relative specifiers against the importing file', () => {
-    const paths = norm(strategy.extractImports('import "./util"\n', 'C:/proj/cmd/main.go'));
-    expect(paths).toContain('absolute:C:/proj/cmd/util.go');
+    const paths = norm(strategy.extractImports('import "./util"\n', `${PROJECT_ROOT}/cmd/main.go`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/cmd/util.go`);
   });
 });
 
@@ -135,8 +138,8 @@ describe('CFamilyImportStrategy', () => {
 
   it('resolves quoted includes and skips system includes', () => {
     const source = '#include <stdio.h>\n#include "sub/util.h"\n';
-    const paths = norm(strategy.extractImports(source, 'C:/proj/src/main.c'));
-    expect(paths).toContain('absolute:C:/proj/src/sub/util.h');
+    const paths = norm(strategy.extractImports(source, `${PROJECT_ROOT}/src/main.c`));
+    expect(paths).toContain(`absolute:${PROJECT_ROOT}/src/sub/util.h`);
     expect(paths.some((p) => p.includes('stdio'))).toBe(false);
   });
 });
@@ -153,7 +156,7 @@ describe('ImportScannerService', () => {
   it('returns no candidates for unknown languages', () => {
     const candidates = service.collectCandidates({
       languageId: 'plaintext',
-      absolutePath: 'C:/proj/file.unknown',
+      absolutePath: `${PROJECT_ROOT}/file.unknown`,
       content: 'import "./x";',
     });
     expect(candidates).toHaveLength(0);
