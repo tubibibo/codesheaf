@@ -46,12 +46,16 @@ interface WorkingFile {
   /** Content that goes into the bundle (sliced for selections). */
   readonly outputContent: string;
   readonly origin: FileOrigin;
+  /** Whether this file's import declarations may be followed (ADR-0006). */
+  readonly importsEnabled: boolean;
 }
 
 interface BuildContext {
   readonly options: BundleOptions;
   /** One matcher per workspace root, so a root's rules never leak into another. */
   readonly ignoreByRoot: Map<string, IgnoreMatcher>;
+  /** Import-containment boundary when no workspace roots exist (ADR-0006). */
+  readonly boundaryRoot: string | undefined;
   readonly maxBytes: number;
   readonly filesByPath: Map<string, WorkingFile>;
   readonly order: string[];
@@ -82,6 +86,11 @@ export class BundleBuilder {
     const ctx: BuildContext = {
       options,
       ignoreByRoot,
+      boundaryRoot: commonAncestor(
+        inputs.map((ref) =>
+          ref.kind === 'directory' ? ref.absolutePath : nodePath.dirname(ref.absolutePath),
+        ),
+      ),
       maxBytes: Math.max(1, Math.round(options.maxFileSizeKB * 1024)),
       filesByPath: new Map(),
       order: [],
@@ -117,7 +126,7 @@ export class BundleBuilder {
     if (maxDepth > 0 && frontier.length > 0) {
       for (const file of frontier) {
         for (const candidate of this.candidatesOf(file)) {
-          const abs = await this.resolveCandidate(candidate);
+          const abs = await this.resolveCandidate(candidate, ctx);
           if (abs === undefined) continue;
           if (ctx.attempted.has(dedupeKey(abs))) continue;
           if (!(await this.deps.fs.exists(abs))) continue;
@@ -136,7 +145,7 @@ export class BundleBuilder {
     const next: WorkingFile[] = [];
     for (const file of frontier) {
       for (const candidate of this.candidatesOf(file)) {
-        const abs = await this.resolveCandidate(candidate);
+        const abs = await this.resolveCandidate(candidate, ctx);
         if (abs === undefined) continue;
         const key = dedupeKey(abs);
         if (ctx.filesByPath.has(key) || ctx.attempted.has(key)) continue;
@@ -158,6 +167,9 @@ export class BundleBuilder {
   }
 
   private candidatesOf(file: WorkingFile): readonly ResolvedCandidate[] {
+    // Untitled / virtual documents have no real location; their imports
+    // cannot resolve against anything meaningful (ADR-0006).
+    if (!file.importsEnabled) return [];
     return this.deps.scanner.collectCandidates({
       languageId: file.languageId,
       absolutePath: file.absolutePath,
@@ -165,19 +177,23 @@ export class BundleBuilder {
     });
   }
 
-  private async resolveCandidate(candidate: ResolvedCandidate): Promise<string | undefined> {
+  private async resolveCandidate(
+    candidate: ResolvedCandidate,
+    ctx: BuildContext,
+  ): Promise<string | undefined> {
     if (candidate.kind === 'absolute') {
-      // Import candidates must stay inside the workspace: a crafted
-      // '../..' chain (or an absolute import) must never weave files from
-      // outside the project. Explicit user inputs do not go through here.
-      return this.admitCandidate(candidate.path);
+      // Import candidates must stay inside the workspace (or, failing that,
+      // the explicit inputs' common ancestor): a crafted '../..' chain (or
+      // an absolute import) must never weave files from outside the project.
+      // Explicit user inputs do not go through here.
+      return this.admitCandidate(candidate.path, ctx);
     }
     // Root-relative paths are relative to a workspace root by definition,
     // so any `..` segment in them is malformed and could escape (defense in
     // depth: the strategies already reject such specifiers).
     if (hasDotDotSegment(candidate.path)) return undefined;
     for (const root of this.deps.workspace.roots()) {
-      const abs = await this.admitCandidate(nodePath.join(root, candidate.path));
+      const abs = await this.admitCandidate(nodePath.join(root, candidate.path), ctx);
       if (abs !== undefined) return abs;
     }
     return undefined;
@@ -188,29 +204,46 @@ export class BundleBuilder {
    * symlink target it points at — lies inside the workspace. Returns the
    * (lexical) candidate path, or `undefined` for silent misses.
    */
-  private async admitCandidate(absolutePath: string): Promise<string | undefined> {
-    if (!this.isInsideWorkspace(absolutePath)) return undefined;
+  private async admitCandidate(
+    absolutePath: string,
+    ctx: BuildContext,
+  ): Promise<string | undefined> {
+    // A candidate that *is* a filesystem root (`/`, `C:\`) is never a module
+    // and must never be admitted, whatever boundary the containment check
+    // derives (defense in depth; ADR-0006).
+    if (nodePath.parse(absolutePath).root === absolutePath) return undefined;
+    if (!this.isInsideWorkspace(absolutePath, ctx)) return undefined;
     if (!(await this.deps.fs.exists(absolutePath))) return undefined;
     const real = await this.deps.fs.realPath(absolutePath);
-    if (real !== undefined && !this.isInsideWorkspace(real)) return undefined;
+    if (real !== undefined && !this.isInsideWorkspace(real, ctx)) return undefined;
     return absolutePath;
   }
 
   /**
-   * Workspace containment for import candidates. Returns `true` when there
-   * are no workspace roots (no boundary to enforce). The `..` test checks
-   * whole segments only, so a legitimately named `..foo` file is admitted.
-   * Non-matches are silent resolution misses, never recorded as skips.
+   * Containment for import candidates. With workspace roots, a candidate
+   * must live inside one of them. Without roots (single-file / untitled
+   * mode) the boundary is the explicit inputs' common ancestor — the
+   * previous "no roots, no boundary" behavior let a crafted import chain
+   * reach anywhere on disk (ADR-0006). The `..` test checks whole segments
+   * only, so a legitimately named `..foo` file is admitted. Non-matches
+   * are silent resolution misses, never recorded as skips.
    */
-  private isInsideWorkspace(absolutePath: string): boolean {
+  private isInsideWorkspace(absolutePath: string, ctx: BuildContext): boolean {
     const roots = this.deps.workspace.roots();
-    if (roots.length === 0) return true;
-    return roots.some((root) => {
-      const rel = nodePath.relative(root, absolutePath);
-      if (rel === '' || nodePath.isAbsolute(rel)) return false;
-      const firstSegment = rel.split(/[\\/]/)[0];
-      return firstSegment !== '..';
-    });
+    if (roots.length > 0) {
+      return roots.some((root) => {
+        const rel = nodePath.relative(root, absolutePath);
+        if (rel === '' || nodePath.isAbsolute(rel)) return false;
+        const firstSegment = rel.split(/[\\/]/)[0];
+        return firstSegment !== '..';
+      });
+    }
+    const { boundaryRoot } = ctx;
+    if (boundaryRoot === undefined) return false;
+    const rel = nodePath.relative(boundaryRoot, absolutePath);
+    if (rel === '' || nodePath.isAbsolute(rel)) return false;
+    const firstSegment = rel.split(/[\\/]/)[0];
+    return firstSegment !== '..';
   }
 
   private async loadFile(
@@ -270,6 +303,7 @@ export class BundleBuilder {
       fullContent: read.content,
       outputContent,
       origin,
+      importsEnabled: ref.resolveImports !== false,
     };
   }
 
@@ -455,4 +489,28 @@ function sliceLines(content: string, startLine: number, endLine: number): string
   end = Math.min(end, total);
   const sliced = lines.slice(start - 1, end).join('\n');
   return sliced.length > 0 ? sliced : null;
+}
+
+/**
+ * Deepest directory containing every given path, or `undefined` when no
+ * common ancestor exists (e.g. explicit inputs on different Windows
+ * drives, in which case import following stays disabled). Inputs are
+ * pre-reduced by the caller: files contribute their directory, directory
+ * inputs contribute themselves. This is the containment boundary for
+ * import candidates when the workspace has no roots (ADR-0006).
+ */
+function commonAncestor(paths: readonly string[]): string | undefined {
+  if (paths.length === 0) return undefined;
+  const parts = paths.map((p) => nodePath.resolve(p).split(/[\\/]/).filter((s) => s.length > 0));
+  const first = parts[0];
+  if (first === undefined || first.length === 0) return undefined;
+  const prefix: string[] = [];
+  for (let i = 0; i < first.length; i += 1) {
+    const segment = first[i];
+    if (segment === undefined) break;
+    if (!parts.every((p) => p[i] === segment)) break;
+    prefix.push(segment);
+  }
+  if (prefix.length === 0) return undefined;
+  return prefix.join('/');
 }

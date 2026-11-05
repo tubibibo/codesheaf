@@ -124,6 +124,65 @@ describe('BundleBuilder', () => {
     expect(bundle.files.map((f) => f.path)).toEqual(['src/main.ts', '..foo.ts']);
   });
 
+  it('confines import candidates to the input boundary when no workspace roots exist', async () => {
+    const workspace = new InMemoryWorkspace([]);
+    const builder = new BundleBuilder({
+      workspace,
+      fs: new InMemoryFileSystem({
+        [`${PROJECT_ROOT}/app/main.ts`]:
+          'import { s } from "./side";\nimport { o } from "../lib/out";\nimport { x } from "../../outside/secret";\nexport const m = s + o + x;\n',
+        [`${PROJECT_ROOT}/app/side.ts`]: 'export const s = 1;\n',
+        [`${PROJECT_ROOT}/lib/out.ts`]: 'export const o = 2;\n',
+        [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n',
+      }),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build([file(`${PROJECT_ROOT}/app/main.ts`)], options());
+    // Boundary = the input's own directory: ./side stays in, ../lib/out and
+    // ../../outside/secret are silent misses (ADR-0006).
+    expect(bundle.files.map((f) => f.path)).toEqual(['main.ts', 'side.ts']);
+  });
+
+  it('expands the no-workspace boundary to the common ancestor of explicit inputs', async () => {
+    const workspace = new InMemoryWorkspace([]);
+    const builder = new BundleBuilder({
+      workspace,
+      fs: new InMemoryFileSystem({
+        [`${PROJECT_ROOT}/app/main.ts`]:
+          'import { u } from "../shared/util";\nexport const m = u;\n',
+        [`${PROJECT_ROOT}/lib/entry.ts`]: 'export const e = 1;\n',
+        [`${PROJECT_ROOT}/shared/util.ts`]: 'export const u = 2;\n',
+        [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n',
+      }),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build(
+      [file(`${PROJECT_ROOT}/app/main.ts`), file(`${PROJECT_ROOT}/lib/entry.ts`)],
+      options(),
+    );
+    // Common ancestor of app/ and lib/ is PROJECT_ROOT, so ../shared/util
+    // from app/main.ts is admitted; nothing outside /proj ever is.
+    expect(bundle.files.map((f) => f.path)).toEqual(['main.ts', 'entry.ts', 'util.ts']);
+  });
+
+  it('does not follow imports from inputs with resolveImports disabled (untitled buffers)', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build(
+      [
+        {
+          kind: 'file',
+          absolutePath: `${PROJECT_ROOT}/src/scratch`,
+          content: 'import { b } from "./b";\nexport const s = 1;\n',
+          languageId: 'typescript',
+          resolveImports: false,
+        },
+      ],
+      options(),
+    );
+    // The sibling b.ts exists on disk; the buffer opts out of import following.
+    expect(bundle.files.map((f) => f.path)).toEqual(['src/scratch']);
+  });
+
   it('drops candidates whose symlink target lies outside the workspace', async () => {
     // A symlink inside the workspace pointing outside: lexically inside,
     // physically outside. The realpath guard must catch it.

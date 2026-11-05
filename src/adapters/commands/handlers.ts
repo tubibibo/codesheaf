@@ -14,13 +14,20 @@ export type AppContainer = CopyUseCaseDeps & PreviewUseCaseDeps;
  * content and language. Editor commands must weave what the user is looking
  * at — unsaved changes and untitled documents included — so the builder is
  * handed the document text and never consults the disk for this file.
+ *
+ * Untitled and other virtual documents have no real location (their
+ * `fsPath` is a placeholder): import following is disabled for them, since
+ * their import declarations cannot resolve against anything meaningful
+ * (ADR-0006).
  */
 function activeDocumentRef(editor: vscode.TextEditor): InputRef {
+  const virtual = editor.document.uri.scheme !== 'file';
   return {
     kind: 'file',
     absolutePath: editor.document.uri.fsPath,
     content: editor.document.getText(),
     languageId: editor.document.languageId,
+    ...(virtual ? { resolveImports: false as const } : {}),
   };
 }
 

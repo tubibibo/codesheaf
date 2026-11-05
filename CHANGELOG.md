@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Import candidates are now confined even when no workspace roots exist
+  (single-file mode): the boundary is the explicit inputs' common ancestor,
+  and filesystem roots are never admitted as candidates. Previously the
+  import closure could reach any path on disk in that mode. Untitled and
+  other virtual documents no longer resolve import declarations at all
+  (see ADR-0006).
+
 ## [1.0.0] - 2026-11-05
 
 ### Added

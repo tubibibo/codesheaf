@@ -125,6 +125,13 @@ export type InputRef =
       ignorePolicy?: IgnorePolicy;
       content?: string;
       languageId?: string;
+      /**
+       * When `false`, this input's import declarations are not followed.
+       * Untitled and other virtual documents have no real location, so
+       * their imports cannot resolve against anything meaningful
+       * (see ADR-0006). Defaults to `true`.
+       */
+      resolveImports?: boolean;
     }
   | { kind: 'directory'; absolutePath: string }
   | {
@@ -134,4 +141,6 @@ export type InputRef =
       endLine: number;
       content?: string;
       languageId?: string;
+      /** See the `file` variant: `false` disables import following. */
+      resolveImports?: boolean;
     };
