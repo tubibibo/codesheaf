@@ -14,7 +14,7 @@ export class JavaImportStrategy implements ImportLanguageStrategy {
   readonly languageIds = ['java'];
   readonly extensions = ['.java'];
 
-  extractImports(source: string): readonly ResolvedCandidate[] {
+  extractImports(source: string, _importerAbsolutePath: string): readonly ResolvedCandidate[] {
     const stripped = stripCStyleComments(source);
     const importRe = /^[ \t]*import[ \t]+(static[ \t]+)?([\w.]+(?:\.\*)?)[ \t]*;/gm;
     const out: ResolvedCandidate[] = [];

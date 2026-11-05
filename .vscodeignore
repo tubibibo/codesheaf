@@ -11,6 +11,7 @@ out/**/*.map
 eslint.config.mjs
 vitest.config.ts
 tsconfig.json
+tsconfig.test.json
 .prettierrc.json
 .editorconfig
 .gitattributes

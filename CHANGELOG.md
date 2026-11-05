@@ -44,5 +44,5 @@ Dependencies`, `Copy Selection as Context`, `Preview Context Bundle`,
 - Import candidates are confined to workspace roots; crafted `../..` import
   chains can no longer weave files from outside the project.
 - Directory traversal is bounded against symlink cycles (visited set +
-  depth cap); test sources are typechecked via `tsconfig.test.json`; CI
-  runs `prettier --check`.
+  depth cap); `tsconfig.test.json` no longer inherits the `src` exclude, so
+  test sources are really type-checked; CI runs `prettier --check`.
