@@ -28,6 +28,6 @@ language and every host, and it must be cheap to verify. Two risks dominate:
 ## Consequences
 
 - 100% of the logic is unit-testable in plain Node (90 tests, no editor).
-- `npm install --production` is a no-op; the packaged .vsix is ~57 KB.
+- `npm install --production` is a no-op; the packaged .vsix is ~61 KB.
 - We own small utilities that libraries could provide — accepted, and each
   has focused tests and an ADR when the trade-off is non-obvious.

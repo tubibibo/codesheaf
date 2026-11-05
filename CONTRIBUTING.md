@@ -9,7 +9,7 @@ opening a PR.
 ```bash
 git clone https://github.com/tubibibo/codesheaf.git
 cd codesheaf
-npm install
+npm ci            # lockfile-tracked install (npm install also works)
 npm run build     # typecheck + lint + tests + compile
 ```
 
