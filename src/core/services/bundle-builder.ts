@@ -161,12 +161,31 @@ export class BundleBuilder {
   }
 
   private async resolveCandidate(candidate: ResolvedCandidate): Promise<string | undefined> {
-    if (candidate.kind === 'absolute') return candidate.path;
+    if (candidate.kind === 'absolute') {
+      // Import candidates must stay inside the workspace: a crafted
+      // '../..' chain (or an absolute import) must never weave files from
+      // outside the project. Explicit user inputs do not go through here.
+      return this.isInsideWorkspace(candidate.path) ? candidate.path : undefined;
+    }
     for (const root of this.deps.workspace.roots()) {
       const abs = nodePath.join(root, candidate.path);
       if (await this.deps.fs.exists(abs)) return abs;
     }
     return undefined;
+  }
+
+  /**
+   * Workspace containment for import candidates. Returns `true` when there
+   * are no workspace roots (no boundary to enforce). Non-matches are silent
+   * resolution misses, never recorded as skips.
+   */
+  private isInsideWorkspace(absolutePath: string): boolean {
+    const roots = this.deps.workspace.roots();
+    if (roots.length === 0) return true;
+    return roots.some((root) => {
+      const rel = nodePath.relative(root, absolutePath);
+      return rel !== '' && !rel.startsWith('..') && !nodePath.isAbsolute(rel);
+    });
   }
 
   private async loadFile(

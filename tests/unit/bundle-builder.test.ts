@@ -8,7 +8,9 @@ const FIXTURES: Record<string, string> = {
   'C:/proj/src/b.ts': 'import { c } from "./c";\nexport const b = 2;\n',
   'C:/proj/src/c.ts': 'import "./b";\nexport const c = 3;\n',
   'C:/proj/src/d.ts': 'import { x } from "../node_modules/lib";\nexport const d = 4;\n',
+  'C:/proj/src/escape.ts': 'import s from "../../outside/secret";\nexport const e = 1;\n',
   'C:/proj/src/lines.txt': 'one\ntwo\nthree\n',
+  'C:/outside/secret.ts': 'SECRET\n',
   'C:/proj/node_modules/lib.js': 'module.exports = 1;\n',
   'C:/proj/.gitignore': 'node_modules/\nsecrets/\n*.secret\n',
   'C:/proj/secrets/key.txt': 'hidden\n',
@@ -63,6 +65,22 @@ describe('BundleBuilder', () => {
     const bundle = await builder.build([file('C:/proj/src/d.ts')], options());
     expect(bundle.files.map((f) => f.path)).toEqual(['src/d.ts']);
     expect(bundle.skipped).toContainEqual({ path: 'node_modules/lib.js', reason: 'ignored' });
+  });
+
+  it('never weaves import candidates from outside the workspace', async () => {
+    const { builder } = makeBuilder(FIXTURES);
+    const bundle = await builder.build([file('C:/proj/src/escape.ts')], options());
+    // The '../../outside/secret' import resolves outside the root: silently
+    // dropped, not even a skip entry.
+    expect(bundle.files.map((f) => f.path)).toEqual(['src/escape.ts']);
+    expect(bundle.skipped.some((s) => s.path.includes('outside'))).toBe(false);
+    expect(bundle.skipped.some((s) => s.reason === 'not-found')).toBe(false);
+  });
+
+  it('keeps allowing explicitly picked files from outside the workspace', async () => {
+    const { builder } = makeBuilder({ 'C:/outside/secret.ts': 'SECRET\n' });
+    const bundle = await builder.build([file('C:/outside/secret.ts')], options());
+    expect(bundle.files.map((f) => f.path)).toEqual(['secret.ts']);
   });
 
   it('bypasses ignore rules for explicitly picked files by default', async () => {
@@ -148,7 +166,14 @@ describe('BundleBuilder', () => {
       options(),
     );
     const paths = bundle.files.map((f) => f.path).sort();
-    expect(paths).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts', 'src/d.ts', 'src/lines.txt']);
+    expect(paths).toEqual([
+      'src/a.ts',
+      'src/b.ts',
+      'src/c.ts',
+      'src/d.ts',
+      'src/escape.ts',
+      'src/lines.txt',
+    ]);
   });
 
   it('prunes ignored directories entirely during expansion', async () => {
