@@ -9,7 +9,7 @@ export interface RenderInput {
   readonly format: BundleFormat;
   readonly includeLineNumbers: boolean;
   readonly includeTree: boolean;
-  /** Display string such as `CodeSheaf v1.0.0`. */
+  /** Display string such as `CodeSheaf v1.0.1`. */
   readonly generator: string;
 }
 
