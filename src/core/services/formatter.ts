@@ -47,9 +47,23 @@ function renderMarkdown(input: RenderInput): string {
     parts.push('## Project Tree', '', '```text', tree, '```', '');
   }
   for (const file of files) {
-    parts.push(`## ${file.path}`, '', fencedCodeBlock(file, includeLineNumbers), '');
+    parts.push(
+      `## ${markdownHeadingPath(file.path)}`,
+      '',
+      fencedCodeBlock(file, includeLineNumbers),
+      '',
+    );
   }
   return `${parts.join('\n').trimEnd()}\n`;
+}
+
+/** Keeps a path literal and on one heading line without changing file content. */
+function markdownHeadingPath(path: string): string {
+  return path
+    .replace(/&/g, '&amp;')
+    .replace(/[\\`*_[\]{}()<>#+!|~]/g, '\\$&')
+    .replace(/\r/g, '&#13;')
+    .replace(/\n/g, '&#10;');
 }
 
 function fencedCodeBlock(file: BundledFile, includeLineNumbers: boolean): string {
