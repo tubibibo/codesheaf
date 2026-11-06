@@ -32,7 +32,7 @@ export interface BundleBuilderDeps {
 export const MAX_DIRECTORY_FILES = 1000;
 
 /** Hard cap on directory nesting during expansion; bounds symlink-cycle walks. */
-export const MAX_DIRECTORY_DEPTH = 32;
+const MAX_DIRECTORY_DEPTH = 32;
 
 type FileRef = Extract<InputRef, { kind: 'file' }>;
 type SelectionRef = Extract<InputRef, { kind: 'selection' }>;

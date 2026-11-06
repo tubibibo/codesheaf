@@ -10,6 +10,7 @@ node_modules/**
 out/**/*.map
 eslint.config.mjs
 vitest.config.ts
+knip.json
 tsconfig.json
 tsconfig.test.json
 .prettierrc.json

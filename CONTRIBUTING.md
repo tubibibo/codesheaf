@@ -26,6 +26,37 @@ Useful scripts:
 
 Debugging in the editor: press **F5** ("Run CodeSheaf Extension").
 
+## Unused code audit
+
+Run the pinned audit CLI without adding a project dependency or changing the lockfile:
+
+```bash
+npm exec --yes --package=knip@5.88.1 -- knip
+```
+
+Knip 5.88.1 declares Node `>=18.18.0`, which includes this project's minimum
+Node 20.0. Keep the version pinned: Knip 6 requires a newer Node 20 release.
+
+`knip.json` declares the VS Code runtime entry, `src/extension.ts`, and six
+intentional public API barrels as entries:
+
+- `src/application/index.ts`
+- `src/core/index.ts`
+- `src/core/domain/index.ts`
+- `src/core/ports/index.ts`
+- `src/core/utils/index.ts`
+- `src/core/services/scan/strategies/index.ts`
+
+Consumers may use the barrels' exports even when the extension itself does not,
+so those exports are public audit roots. The configuration does not ignore
+files or implementation exports. Its one dependency exception is `@types/vscode`:
+TypeScript resolves the extension's `vscode` imports to those required declarations,
+but the test-only `vscode` alias can hide that relationship from Knip. Keep these
+typings installed. Review any remaining findings; a nonzero exit status can
+indicate unused code that still needs investigation.
+The VS Code plugin may call `src/extension.ts` redundant because it also infers
+that entry; retain the explicit declaration to document the runtime boundary.
+
 ## Architecture rules (enforced by CI)
 
 1. **Layering is law.** `src/core/**` and `src/application/**` must never

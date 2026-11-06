@@ -8,8 +8,6 @@ import {
   isProbablyBinary,
 } from '../../core/utils/binary';
 
-const BINARY_SNIFF_BYTES = 8192;
-
 /** Adapter: VS Code virtual file system -> {@link FileSystemPort}. */
 export class VsCodeFileSystem implements FileSystemPort {
   async exists(absolutePath: string): Promise<boolean> {
@@ -64,6 +62,3 @@ export class VsCodeFileSystem implements FileSystemPort {
     }));
   }
 }
-
-/** Re-exported for tests that want to exercise the same sniffing rule. */
-export { BINARY_SNIFF_BYTES };

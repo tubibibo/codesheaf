@@ -24,7 +24,7 @@ import { VsCodeWorkspace } from '../adapters/vscode/workspace.adapter';
  * Composition root: the one place where platform adapters are wired into
  * the platform-agnostic core. Everything downstream depends on ports only.
  */
-export interface Container extends AppContainer {
+interface Container extends AppContainer {
   readonly logger: VsCodeLogger;
   readonly workspace: WorkspacePort;
   readonly fs: FileSystemPort;

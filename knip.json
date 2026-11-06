@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@5.88.1/schema.json",
+  "entry": [
+    "src/extension.ts",
+    "src/application/index.ts",
+    "src/core/index.ts",
+    "src/core/domain/index.ts",
+    "src/core/ports/index.ts",
+    "src/core/utils/index.ts",
+    "src/core/services/scan/strategies/index.ts"
+  ],
+  "ignoreDependencies": ["@types/vscode"]
+}
