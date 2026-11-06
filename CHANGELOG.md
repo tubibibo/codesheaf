@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Multi-root bundles qualify display paths with unique workspace-root labels so same-named files remain distinct in the file tree.
 - The token meter is now owned by the extension context, including after repeated enable/disable cycles.
 - Import candidates are now confined even when no workspace roots exist
   (single-file mode): the boundary is the explicit inputs' common ancestor,

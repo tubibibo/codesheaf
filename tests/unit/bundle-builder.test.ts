@@ -492,7 +492,12 @@ describe('BundleBuilder', () => {
     // alpha's anchored /vendored prunes alpha/vendored — but must not reach
     // into beta, whose vendored/b.ts is kept. (The root .gitignore file
     // itself is an ordinary file and is woven.)
-    expect(paths).toEqual(['.gitignore', 'src/b.ts', 'src/main.ts', 'vendored/b.ts']);
+    expect(paths).toEqual([
+      'alpha/.gitignore',
+      'alpha/src/b.ts',
+      'alpha/src/main.ts',
+      'beta/vendored/b.ts',
+    ]);
   });
 
   it('applies user exclude globs to every workspace root', async () => {
@@ -510,7 +515,7 @@ describe('BundleBuilder', () => {
       ],
       options({ exclude: ['*.log'] }),
     );
-    expect(bundle.files.map((f) => f.path)).toEqual(['keep.ts']);
+    expect(bundle.files.map((f) => f.path)).toEqual(['beta/keep.ts']);
   });
 
   it('renders a tree and totals in the final bundle', async () => {

@@ -298,7 +298,7 @@ export class BundleBuilder {
 
     return {
       absolutePath,
-      displayPath: rel ?? nodePath.basename(absolutePath),
+      displayPath: this.displayPath(absolutePath),
       languageId: ref.languageId ?? languageIdForPath(absolutePath),
       fullContent: read.content,
       outputContent,
@@ -389,8 +389,34 @@ export class BundleBuilder {
     const key = `${pathKey}#${reason}`;
     if (ctx.skipSeen.has(key)) return;
     ctx.skipSeen.add(key);
+    ctx.skipped.push({ path: this.displayPath(absolutePath), reason });
+  }
+
+  /** Root-qualified presentation only; ignore rules still use root-relative paths. */
+  private displayPath(absolutePath: string): string {
     const rel = this.deps.workspace.relativePath(absolutePath);
-    ctx.skipped.push({ path: rel ?? nodePath.basename(absolutePath), reason });
+    const roots = this.deps.workspace.roots();
+    const root = this.deps.workspace.rootFor(absolutePath);
+    if (rel === undefined || root === undefined || roots.length <= 1) {
+      return rel ?? nodePath.basename(absolutePath);
+    }
+    const names = roots.map((path) => nodePath.basename(path) || path.replace(/\\/g, '/'));
+    // Reserve literal names too, so generated suffixes cannot hide another root.
+    const used = new Set(names);
+    for (const [index, candidate] of roots.entries()) {
+      const name = names[index] as string;
+      let label = name;
+      if (names.indexOf(name) !== names.lastIndexOf(name)) {
+        let suffix = index + 1;
+        do {
+          label = `${name} [${suffix}]`;
+          suffix += 1;
+        } while (used.has(label));
+        used.add(label);
+      }
+      if (dedupeKey(candidate) === dedupeKey(root)) return `${label}/${rel}`;
+    }
+    return rel;
   }
 
   /**
