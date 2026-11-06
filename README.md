@@ -40,7 +40,7 @@ exactly the local dependencies that matter."**
 - 🔍 **Preview before you paste** — render the exact bundle into a separate
   editor tab instead of the clipboard.
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
-  the core enforced by ESLint; 117 unit tests; ~98% statement coverage over
+  the core enforced by ESLint; 144 unit tests; ~95% statement coverage over
   the core/application layers;
   **zero runtime npm dependencies** (the .vsix is ~63 KB).
 
@@ -117,7 +117,7 @@ Decision log: [docs/adr/](docs/adr/) · Direction research:
 
 ```bash
 npm install
-npm run build           # typecheck + lint + test + compile
+npm run build           # typecheck + lint + test + compile + smoke
 npm run package         # + .vsix packaging
 npm run test:coverage   # tests with the coverage gates (80/75/80/80)
 npm run test:watch      # fast feedback while hacking on the core

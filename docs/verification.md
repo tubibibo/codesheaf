@@ -33,3 +33,19 @@ appears and refreshes with editor and selection changes. Disable/reload the
 extension and confirm its status item and commands disappear. Record the actual
 VS Code version, OS and result when performing this acceptance; the headless smoke
 does not establish those results.
+
+## Dependency verification (2026-11-06)
+
+Vitest and `@vitest/coverage-v8` are aligned at 4.1.12, with Vite 6.4.5,
+to retain the existing Node 20 test support. Vitest 5.1.0 requires Node
+22.12 or later. Tests and coverage were also run with Node 20.20.2; this
+does not establish compatibility of every existing packaging dependency,
+some of which already declare Node 22 requirements.
+
+The full npm audit still reports nine moderate development-dependency
+findings in the ESLint/vsce glob and minimatch chains. Production-only
+audit reports zero findings; no high or critical findings remain. These
+are observations for the recorded dependency snapshot, not a guarantee
+about future advisories. Coverage thresholds remain 80/75/80/80; the V8
+coverage implementation changed during the Vitest major upgrade, so the
+reported percentages are not directly comparable to the old provider.

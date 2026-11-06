@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **把文件、选区及其导入依赖打包成 LLM 就绪的上下文——就在编辑器里完成。**
-零运行时依赖，核心层单元测试语句覆盖率约 98%。
+零运行时依赖，核心层单元测试语句覆盖率约 95%。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -22,7 +22,7 @@ _Sheaf_（麦捆）即"把散落的秸秆捆成一束"。CodeSheaf 把你正在�
 - 📐 **三种输出格式**——Markdown（围栏代码块 + 文件树）、XML（CDATA 安全、属性转义）、纯文本。
 - 🛡️ **安全的文件挑选**——遵守 `.gitignore` 与自定义排除规则；二进制与超限文件按精确原因跳过；显式选择的文件永远保留（你点名要的，就给你）。
 - 🔍 **粘贴前预览**——把最终打包文本在单独的编辑器标签页中打开检查，而不是直接进剪贴板。
-- 🧪 **可信的核心**——六边形架构，ESLint 强制核心层禁用 `vscode`；117 个单元测试；core/application 层语句覆盖率约 98%；**零运行时 npm 依赖**（.vsix 仅约 63 KB）。
+- 🧪 **可信的核心**——六边形架构，ESLint 强制核心层禁用 `vscode`；144 个单元测试；core/application 层语句覆盖率约 95%；**零运行时 npm 依赖**（.vsix 仅约 63 KB）。
 
 ## 🚀 安装
 
@@ -92,7 +92,7 @@ src/
 
 ```bash
 npm install
-npm run build           # typecheck + lint + test + compile
+npm run build           # typecheck + lint + test + compile + smoke
 npm run package         # 追加 .vsix 打包
 npm run test:coverage   # 带覆盖率门槛（80/75/80/80）的测试
 npm run test:watch      # 修改核心时的快速反馈
