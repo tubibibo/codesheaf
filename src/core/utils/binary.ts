@@ -72,10 +72,15 @@ export function hasUtf16LeBom(bytes: Uint8Array): boolean {
   return bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe;
 }
 
+/** True when the buffer starts with a UTF-16 big-endian BOM (FE FF). */
+export function hasUtf16BeBom(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff;
+}
+
 /**
- * Any NUL byte in the first 8 KiB marks the file as binary. UTF-16LE files
+ * Any NUL byte in the first 8 KiB marks the file as binary. UTF-16 files
  * (NUL-interleaved but genuinely text) must be checked via
- * {@link hasUtf16LeBom} *before* consulting this function.
+ * {@link hasUtf16LeBom} or {@link hasUtf16BeBom} *before* consulting this function.
  */
 export function isProbablyBinary(bytes: Uint8Array): boolean {
   const sampleEnd = Math.min(bytes.length, 8192);
