@@ -56,6 +56,8 @@ interface BuildContext {
   readonly ignoreByRoot: Map<string, IgnoreMatcher>;
   /** Import-containment boundary when no workspace roots exist (ADR-0006). */
   readonly boundaryRoot: string | undefined;
+  /** Cache canonical roots, including unresolved ones, for this build only. */
+  readonly realPathByRoot: Map<string, Promise<string | undefined>>;
   readonly maxBytes: number;
   readonly filesByPath: Map<string, WorkingFile>;
   readonly order: string[];
@@ -91,6 +93,7 @@ export class BundleBuilder {
           ref.kind === 'directory' ? ref.absolutePath : nodePath.dirname(ref.absolutePath),
         ),
       ),
+      realPathByRoot: new Map(),
       maxBytes: Math.max(1, Math.round(options.maxFileSizeKB * 1024)),
       filesByPath: new Map(),
       order: [],
@@ -212,10 +215,10 @@ export class BundleBuilder {
     // and must never be admitted, whatever boundary the containment check
     // derives (defense in depth; ADR-0006).
     if (nodePath.parse(absolutePath).root === absolutePath) return undefined;
-    if (!this.isInsideWorkspace(absolutePath, ctx)) return undefined;
+    if (!(await this.isInsideWorkspace(absolutePath, ctx))) return undefined;
     if (!(await this.deps.fs.exists(absolutePath))) return undefined;
     const real = await this.deps.fs.realPath(absolutePath);
-    if (real !== undefined && !this.isInsideWorkspace(real, ctx)) return undefined;
+    if (real !== undefined && !(await this.isInsideWorkspace(real, ctx, true))) return undefined;
     return absolutePath;
   }
 
@@ -228,22 +231,30 @@ export class BundleBuilder {
    * only, so a legitimately named `..foo` file is admitted. Non-matches
    * are silent resolution misses, never recorded as skips.
    */
-  private isInsideWorkspace(absolutePath: string, ctx: BuildContext): boolean {
+  private async isInsideWorkspace(
+    absolutePath: string,
+    ctx: BuildContext,
+    canonical = false,
+  ): Promise<boolean> {
     const roots = this.deps.workspace.roots();
-    if (roots.length > 0) {
-      return roots.some((root) => {
-        const rel = nodePath.relative(root, absolutePath);
-        if (rel === '' || nodePath.isAbsolute(rel)) return false;
-        const firstSegment = rel.split(/[\\/]/)[0];
-        return firstSegment !== '..';
-      });
-    }
     const { boundaryRoot } = ctx;
-    if (boundaryRoot === undefined) return false;
-    const rel = nodePath.relative(boundaryRoot, absolutePath);
-    if (rel === '' || nodePath.isAbsolute(rel)) return false;
-    const firstSegment = rel.split(/[\\/]/)[0];
-    return firstSegment !== '..';
+    const boundaries = roots.length > 0 ? roots : boundaryRoot === undefined ? [] : [boundaryRoot];
+    for (const root of boundaries) {
+      let boundary = root;
+      if (canonical) {
+        let realRoot = ctx.realPathByRoot.get(root);
+        if (realRoot === undefined) {
+          realRoot = this.deps.fs.realPath(root);
+          ctx.realPathByRoot.set(root, realRoot);
+        }
+        boundary = (await realRoot) ?? root;
+      }
+      const rel = nodePath.relative(boundary, absolutePath);
+      if (rel === '' || nodePath.isAbsolute(rel)) continue;
+      const firstSegment = rel.split(/[\\/]/)[0];
+      if (firstSegment !== '..') return true;
+    }
+    return false;
   }
 
   private async loadFile(

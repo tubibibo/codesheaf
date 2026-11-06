@@ -228,6 +228,86 @@ describe('BundleBuilder', () => {
     expect(bundle.skipped.some((s) => s.path.includes('secret'))).toBe(false);
   });
 
+  describe.each([
+    { mode: 'workspace root', roots: [PROJECT_ROOT] },
+    { mode: 'single-file boundary', roots: [] },
+  ])('canonical import containment ($mode)', ({ roots }) => {
+    const canonicalRoot = PROJECT_ROOT.replace('/proj', '/long/proj');
+
+    it.each([
+      {
+        name: 'admits candidates inside an aliased root',
+        realRoot: canonicalRoot,
+        realCandidateRoot: canonicalRoot,
+        admitted: true,
+      },
+      {
+        name: 'rejects real paths escaping an aliased root',
+        realRoot: canonicalRoot,
+        realCandidateRoot: OUTSIDE_ROOT,
+        admitted: false,
+      },
+      {
+        name: 'falls back to literal containment when the root cannot be resolved',
+        realRoot: undefined,
+        realCandidateRoot: PROJECT_ROOT,
+        admitted: true,
+      },
+      {
+        name: 'rejects escapes when the root cannot be resolved',
+        realRoot: undefined,
+        realCandidateRoot: OUTSIDE_ROOT,
+        admitted: false,
+      },
+      {
+        name: 'requires canonical containment even when the real path is literally inside',
+        realRoot: canonicalRoot,
+        realCandidateRoot: PROJECT_ROOT,
+        admitted: false,
+      },
+    ])(
+      '$name and caches the root once per build',
+      async ({ realRoot, realCandidateRoot, admitted }) => {
+        class AliasedFileSystem extends InMemoryFileSystem {
+          rootCalls = 0;
+
+          override async realPath(absolutePath: string): Promise<string | undefined> {
+            const key = normalizePath(absolutePath);
+            if (key === PROJECT_ROOT) {
+              this.rootCalls += 1;
+              return realRoot;
+            }
+            if (key === `${PROJECT_ROOT}/helper.ts` || key === `${PROJECT_ROOT}/other.ts`) {
+              return key.replace(PROJECT_ROOT, realCandidateRoot);
+            }
+            // A physical alias into the workspace still needs literal containment.
+            if (key === `${OUTSIDE_ROOT}/helper.ts`) return `${canonicalRoot}/helper.ts`;
+            return super.realPath(absolutePath);
+          }
+        }
+        const fs = new AliasedFileSystem({
+          [`${PROJECT_ROOT}/main.ts`]:
+            'import "./helper";\nimport "./other";\nimport "../outside/helper";\n',
+          [`${PROJECT_ROOT}/helper.ts`]: 'export const helper = 1;\n',
+          [`${PROJECT_ROOT}/other.ts`]: 'export const other = 2;\n',
+          [`${OUTSIDE_ROOT}/helper.ts`]: 'export const outside = 3;\n',
+        });
+        const builder = new BundleBuilder({
+          workspace: new InMemoryWorkspace(roots),
+          fs,
+          scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+        });
+        for (const buildNumber of [1, 2]) {
+          const bundle = await builder.build([file(`${PROJECT_ROOT}/main.ts`)], options());
+          expect(bundle.files.map((f) => f.path)).toEqual(
+            admitted ? ['main.ts', 'helper.ts', 'other.ts'] : ['main.ts'],
+          );
+          expect(fs.rootCalls).toBe(buildNumber);
+        }
+      },
+    );
+  });
+
   it('keeps allowing explicitly picked files from outside the workspace', async () => {
     const { builder } = makeBuilder({ [`${OUTSIDE_ROOT}/secret.ts`]: 'SECRET\n' });
     const bundle = await builder.build([file(`${OUTSIDE_ROOT}/secret.ts`)], options());
