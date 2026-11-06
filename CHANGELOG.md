@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejected. Windows was unaffected, which is why the 1.0.1 release passed
   locally. Paths that share only a filesystem root still disable import
   following instead of admitting the whole volume.
+- Import following no longer depends on how the folder was spelled. The
+  real-path containment check now compares against the canonical workspace
+  roots, so opening a project through an 8.3 short name or a junction (where
+  `realpath` expands to the long form) keeps its imports instead of dropping
+  them as if they had escaped. Symlinks pointing outside the workspace are
+  still rejected, and a root that cannot be resolved falls back to the
+  literal comparison.
 
 ## [1.0.1] - 2026-11-07
 
