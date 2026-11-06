@@ -99,6 +99,7 @@ npm run test:watch      # 修改核心时的快速反馈
 ```
 
 欢迎贡献，见 [CONTRIBUTING.md](CONTRIBUTING.md)。架构规则（核心纯净、零运行时依赖）由 CI 强制执行。
+漏洞报告方式见 [SECURITY.md](SECURITY.md)，参与社区请遵守[行为准则](CODE_OF_CONDUCT.md)。
 
 ## 🗺️ 路线图
 

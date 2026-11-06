@@ -124,6 +124,8 @@ npm run test:watch      # fast feedback while hacking on the core
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The
 architecture rules (core purity, zero runtime deps) are enforced in CI.
+Security reports follow [SECURITY.md](SECURITY.md); participation follows
+the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 🗺️ Roadmap
 

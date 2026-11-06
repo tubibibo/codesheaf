@@ -17,5 +17,6 @@ tsconfig.test.json
 .gitattributes
 .gitignore
 .nvmrc
+SECURITY.md
 **/*.log
 .DS_Store
