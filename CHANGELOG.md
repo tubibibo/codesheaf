@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-07
+
+### Fixed
+
+- Import following works on POSIX again in single-file mode. The boundary of the
+  import closure is the explicit inputs' common ancestor, and that computation
+  normalized absolute paths into relative ones on POSIX (the leading `/` was
+  dropped), so every import candidate outside the input's own directory was
+  rejected. Windows was unaffected, which is why the 1.0.1 release passed
+  locally. Paths that share only a filesystem root still disable import
+  following instead of admitting the whole volume.
+
 ## [1.0.1] - 2026-11-07
 
 ### Fixed

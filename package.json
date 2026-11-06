@@ -2,7 +2,7 @@
   "name": "codesheaf",
   "displayName": "CodeSheaf — LLM Context Bundler",
   "description": "Bundle files, selections and their import dependencies into LLM-ready context (Markdown / XML / plain text) with token estimates — right from your editor.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "codesheaf-tools",
   "license": "MIT",
   "repository": {
