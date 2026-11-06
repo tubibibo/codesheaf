@@ -22,7 +22,11 @@
 
 The Editor context menu shows _Copy Selection as Context_ when text is
 selected, and _Copy Active File_ always; the Explorer context menu shows
-_Copy as LLM Context_.
+_Copy as LLM Context_. These menus intentionally remain available for all
+file types, not only languages with an import-scanning strategy. Text and
+configuration files can still be bundled without import following; binary
+files are skipped with the `binary` reason. Visibility does not mean every
+selected file will be included.
 
 ## Output formats
 
@@ -78,13 +82,21 @@ separator lines.
 Depth is controlled by `codesheaf.maxImportDepth` (default 3, `0` disables).
 Only **local** dependencies are followed:
 
-| Language                | Followed                                                                                           | Skipped                                           |
-| ----------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| TypeScript / JavaScript | `./`, `../` imports, re-exports, `require()`, dynamic `import()`                                   | bare packages (`react`), URLs                     |
-| Python                  | `from .x import`, `from ..pkg import`, absolute `import pkg.mod` (matched against workspace files) | stdlib/third-party that never matches a real file |
-| Java                    | `import com.x.Y;` → `com/x/Y.java`, static imports → declaring class                               | wildcards `com.x.*`                               |
-| Go                      | block + single imports; relative specifiers                                                        | stdlib names that match no file                   |
-| C/C++                   | quoted `#include "..."`                                                                            | system `<...>` includes                           |
+| Language                | Followed                                                                                           | Skipped                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| TypeScript / JavaScript | `./`, `../` imports, re-exports, `require()`, dynamic `import()`                                   | bare packages (`react`), URLs, `@/` and `~/` aliases |
+| Python                  | `from .x import`, `from ..pkg import`, absolute `import pkg.mod` (matched against workspace files) | stdlib/third-party that never matches a real file    |
+| Java                    | `import com.x.Y;` → `com/x/Y.java`, static imports → declaring class                               | wildcards `com.x.*`                                  |
+| Go                      | block + single imports; relative specifiers                                                        | stdlib names that match no file                      |
+| C/C++                   | quoted `#include "..."`                                                                            | system `<...>` includes                              |
+
+TypeScript/JavaScript scanning does not read `tsconfig.json` `paths` or
+`baseUrl`. Alias imports such as `@/components/button` and `~/utils` are
+skipped even when they refer to local files, so those dependencies will not
+be included automatically. Explicitly select the missing files in the
+Explorer to include them, then review the preview before sharing. This is
+a limitation of scanning the target project, not a requirement to change
+that project's imports or CodeSheaf's own build configuration.
 
 ## Settings
 

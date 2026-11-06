@@ -24,8 +24,9 @@ exactly the local dependencies that matter."**
 
 - 🎯 **Import-aware bundling** — follows local import closures
   (TypeScript/JavaScript, Python, Java, Go, C/C++) to a configurable depth.
-  Third-party packages are excluded automatically because they don't exist
-  in your workspace.
+  TypeScript/JavaScript following supports relative imports only; `tsconfig`
+  `paths`/`baseUrl` aliases such as `@/` and `~/` are not resolved.
+  Bare package names and URLs are skipped.
 - 📋 **Everything is one command** — active file, current selection, or
   multi-select files/folders in the Explorer (folders expand with
   gitignore pruning).
