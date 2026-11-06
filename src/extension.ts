@@ -16,6 +16,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // else flows through ConfigPort on every use case call. Follow the toggle
   // live instead of waiting for a window reload.
   let meter: TokenMeter | undefined;
+  const disposeMeter = (): void => {
+    meter?.dispose();
+    meter = undefined;
+  };
+  // Own the current meter once, rather than retaining every toggled instance.
+  context.subscriptions.push({ dispose: disposeMeter });
   const syncMeter = (): void => {
     const enabled = vscode.workspace
       .getConfiguration('codesheaf')
@@ -23,8 +29,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (enabled && meter === undefined) {
       meter = new TokenMeter(container.estimator);
     } else if (!enabled && meter !== undefined) {
-      meter.dispose();
-      meter = undefined;
+      disposeMeter();
     }
   };
   syncMeter();
