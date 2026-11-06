@@ -51,6 +51,9 @@ jobs:
       - name: Compile
         run: npm run compile
 
+      - name: Headless adapter assembly smoke (vscode stub)
+        run: npm run test:smoke
+
       - name: Package extension
         run: npx vsce package
 

@@ -156,10 +156,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:smoke": "node ./scripts/smoke-adapter.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "build": "npm run typecheck && npm run typecheck:tests && npm run lint && npm run test && npm run compile",
+    "build": "npm run typecheck && npm run typecheck:tests && npm run lint && npm run test && npm run compile && npm run test:smoke",
     "package": "npm run build && vsce package",
     "clean": "node ./scripts/clean.mjs"
   },
