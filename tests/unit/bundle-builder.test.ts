@@ -165,6 +165,26 @@ describe('BundleBuilder', () => {
     expect(bundle.files.map((f) => f.path)).toEqual(['main.ts', 'entry.ts', 'util.ts']);
   });
 
+  it('disables import following when inputs share only the filesystem root', async () => {
+    const workspace = new InMemoryWorkspace([]);
+    const builder = new BundleBuilder({
+      workspace,
+      fs: new InMemoryFileSystem({
+        [`${PROJECT_ROOT}/app/main.ts`]: 'import { s } from "./side";\nexport const m = s;\n',
+        [`${PROJECT_ROOT}/app/side.ts`]: 'export const s = 1;\n',
+        [`${OUTSIDE_ROOT}/entry.ts`]: 'export const e = 2;\n',
+      }),
+      scanner: new ImportScannerService(BUILT_IN_STRATEGIES),
+    });
+    const bundle = await builder.build(
+      [file(`${PROJECT_ROOT}/app/main.ts`), file(`${OUTSIDE_ROOT}/entry.ts`)],
+      options(),
+    );
+    // The only shared component is `/` (or the drive root), which is not a
+    // safe boundary for import resolution.
+    expect(bundle.files.map((f) => f.path)).toEqual(['main.ts', 'entry.ts']);
+  });
+
   it('does not follow imports from inputs with resolveImports disabled (untitled buffers)', async () => {
     const { builder } = makeBuilder(FIXTURES);
     const bundle = await builder.build(
