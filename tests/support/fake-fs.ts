@@ -5,6 +5,8 @@ import type {
   FileSystemPort,
   WorkspacePort,
 } from '../../src/core/ports';
+import { isProbablyBinary } from '../../src/core/utils/binary';
+import { decodeUtf16ByBom, decodeUtf8Strict } from '../../src/core/utils/decode';
 
 /** Normalizes test paths so the same fixtures work on Windows and Linux. */
 export function normalizePath(p: string): string {
@@ -22,16 +24,20 @@ export const PROJECT_ROOT = `${DRIVE}/proj`;
 /** A sibling of PROJECT_ROOT, used to prove import containment. */
 export const OUTSIDE_ROOT = `${DRIVE}/outside`;
 
+/** A fixture file: text, or raw bytes (to model non-UTF-8 disk content). */
+export type FakeFileContent = string | Uint8Array;
+
 /**
  * In-memory FileSystemPort. Keys are absolute POSIX-style paths under
  * PROJECT_ROOT (e.g. `/proj/src/a.ts`, `C:/proj/src/a.ts` on Windows).
- * Content containing a NUL byte is treated as binary, mirroring the
- * production sniffing rule.
+ * Byte fixtures follow the same decoding rules as the production adapter:
+ * UTF-16 BOMs decode, NUL bytes are binary, and invalid UTF-8 is an
+ * `encoding` skip rather than silent U+FFFD replacement.
  */
 export class InMemoryFileSystem implements FileSystemPort {
-  private readonly files: ReadonlyMap<string, string>;
+  private readonly files: ReadonlyMap<string, FakeFileContent>;
 
-  constructor(files: Readonly<Record<string, string>>) {
+  constructor(files: Readonly<Record<string, FakeFileContent>>) {
     this.files = new Map(Object.entries(files).map(([key, value]) => [normalizePath(key), value]));
   }
 
@@ -45,11 +51,16 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 
   async readText(absolutePath: string, maxBytes: number): Promise<FileReadResult> {
-    const content = this.files.get(normalizePath(absolutePath));
-    if (content === undefined) return { ok: false, reason: 'not-found' };
-    if (Buffer.byteLength(content, 'utf-8') > maxBytes) return { ok: false, reason: 'too-large' };
-    if (Buffer.from(content, 'utf-8').includes(0)) return { ok: false, reason: 'binary' };
-    return { ok: true, content };
+    const value = this.files.get(normalizePath(absolutePath));
+    if (value === undefined) return { ok: false, reason: 'not-found' };
+    const bytes =
+      typeof value === 'string' ? Buffer.from(value, 'utf-8') : Buffer.from(value.buffer);
+    if (bytes.byteLength > maxBytes) return { ok: false, reason: 'too-large' };
+    const utf16 = decodeUtf16ByBom(bytes);
+    if (utf16 !== undefined) return { ok: true, content: utf16 };
+    if (isProbablyBinary(bytes)) return { ok: false, reason: 'binary' };
+    const decoded = decodeUtf8Strict(bytes);
+    return decoded.ok ? { ok: true, content: decoded.content } : { ok: false, reason: 'encoding' };
   }
 
   async listDir(absoluteDir: string): Promise<readonly DirectoryEntry[]> {

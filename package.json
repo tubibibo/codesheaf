@@ -76,16 +76,31 @@
         },
         {
           "command": "codesheaf.copyFile",
+          "when": "resourceScheme == file || resourceScheme == untitled",
+          "group": "9_codesheaf"
+        },
+        {
+          "command": "codesheaf.copyFileWithImports",
+          "when": "resourceScheme == file || resourceScheme == untitled",
           "group": "9_codesheaf"
         }
       ],
       "explorer/context": [
         {
           "command": "codesheaf.copyFiles",
+          "when": "explorerResourceIsFolder || resourceScheme == file",
           "group": "9_codesheaf"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "codesheaf.copyFileWithImports",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
+        "when": "editorTextFocus"
+      }
+    ],
     "configuration": {
       "title": "CodeSheaf",
       "properties": {

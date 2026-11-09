@@ -7,7 +7,10 @@ import type { SkipReason } from '../domain/bundle';
  */
 export type FileReadResult =
   | { ok: true; content: string }
-  | { ok: false; reason: Extract<SkipReason, 'binary' | 'too-large' | 'not-found' | 'unreadable'> };
+  | {
+      ok: false;
+      reason: Extract<SkipReason, 'binary' | 'encoding' | 'too-large' | 'not-found' | 'unreadable'>;
+    };
 
 /** One row of a directory listing. */
 export interface DirectoryEntry {

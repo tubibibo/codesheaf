@@ -9,6 +9,7 @@ import type {
 } from '../../src/core/ports';
 import {
   copyAsContext,
+  describeSkips,
   previewAsContext,
   previewLanguageForFormat,
   type CopyUseCaseDeps,
@@ -67,6 +68,9 @@ class FakeConfig implements ConfigPort {
   constructor(readonly options: Partial<typeof DEFAULT_BUNDLE_OPTIONS> = {}) {}
   getBundleOptions() {
     return { ...DEFAULT_BUNDLE_OPTIONS, ...this.options };
+  }
+  isStatusBarEnabled() {
+    return true;
   }
 }
 
@@ -193,5 +197,27 @@ describe('previewLanguageForFormat', () => {
     expect(previewLanguageForFormat('markdown')).toBe('markdown');
     expect(previewLanguageForFormat('xml')).toBe('xml');
     expect(previewLanguageForFormat('plain')).toBe('plaintext');
+  });
+});
+
+describe('describeSkips', () => {
+  it('lists every skip with its reason', () => {
+    expect(
+      describeSkips([
+        { path: 'a.png', reason: 'binary' },
+        { path: 'legacy.txt', reason: 'encoding' },
+      ]),
+    ).toBe('binary a.png, encoding legacy.txt');
+  });
+
+  it('truncates huge directory picks to 50 rows plus a count', () => {
+    const entries = Array.from({ length: 60 }, (_, index) => ({
+      path: `f${index}.ts`,
+      reason: 'ignored' as const,
+    }));
+    const text = describeSkips(entries);
+    expect(text).toContain('ignored f49.ts');
+    expect(text).not.toContain('f50.ts');
+    expect(text.endsWith('…and 10 more')).toBe(true);
   });
 });

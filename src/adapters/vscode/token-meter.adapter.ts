@@ -10,6 +10,9 @@ const SELECTION_THROTTLE_MS = 120;
 /** Estimation input cap: beyond this, the estimate is extrapolated from a sample. */
 const ESTIMATE_CHAR_LIMIT = 100_000;
 
+/** Status-bar slot priority; arbitrary but fixed so the item's position is stable. */
+const TOKEN_METER_PRIORITY = 90;
+
 /**
  * Status-bar readout: live token estimate for the active editor (or the
  * current selection when one exists). Clicking it copies exactly what the
@@ -28,7 +31,10 @@ export class TokenMeter implements vscode.Disposable {
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly estimator: (text: string) => number) {
-    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
+    this.item = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      TOKEN_METER_PRIORITY,
+    );
     this.item.name = 'CodeSheaf Token Meter';
     this.item.command = 'codesheaf.copyFile';
     this.item.tooltip =

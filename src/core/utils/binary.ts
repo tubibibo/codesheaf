@@ -78,12 +78,20 @@ export function hasUtf16BeBom(bytes: Uint8Array): boolean {
 }
 
 /**
- * Any NUL byte in the first 8 KiB marks the file as binary. UTF-16 files
- * (NUL-interleaved but genuinely text) must be checked via
- * {@link hasUtf16LeBom} or {@link hasUtf16BeBom} *before* consulting this function.
+ * How many leading bytes the NUL sniff inspects. The UTF-16 BOM checks in
+ * {@link decodeUtf16ByBom} must run *before* this sniff — the contract is
+ * documented here so the ordering never drifts.
+ */
+export const BINARY_SNIFF_BYTES = 8192;
+
+/**
+ * Any NUL byte in the first {@link BINARY_SNIFF_BYTES} bytes marks the file as
+ * binary. UTF-16 files (NUL-interleaved but genuinely text) must be checked
+ * via {@link hasUtf16LeBom} or {@link hasUtf16BeBom} *before* consulting
+ * this function.
  */
 export function isProbablyBinary(bytes: Uint8Array): boolean {
-  const sampleEnd = Math.min(bytes.length, 8192);
+  const sampleEnd = Math.min(bytes.length, BINARY_SNIFF_BYTES);
   for (let i = 0; i < sampleEnd; i += 1) {
     if (bytes[i] === 0) return true;
   }

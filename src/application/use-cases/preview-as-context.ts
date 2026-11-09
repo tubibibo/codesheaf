@@ -1,4 +1,4 @@
-import type { BundleFormat, InputRef } from '../../core/domain/bundle';
+import type { BundleFormat, BundleOptions, InputRef } from '../../core/domain/bundle';
 import type { ConfigPort, LoggerPort, NotificationPort, PreviewPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
 import { formatTokenCount } from '../../core/utils/format';
@@ -37,7 +37,13 @@ export async function previewAsContext(
   refs: readonly InputRef[],
   overrides: CopyOverrides = {},
 ): Promise<boolean> {
-  const options = resolveOptions(deps.config.getBundleOptions(), overrides);
+  // Previews are the review surface: unlike clipboard copies they render the
+  // skipped-files section, so "why did this file not make it in?" is
+  // answerable without opening the output channel.
+  const options: BundleOptions = {
+    ...resolveOptions(deps.config.getBundleOptions(), overrides),
+    includeSkippedSection: true,
+  };
   try {
     const bundle = await deps.builder.build(refs, options);
     if (bundle.files.length === 0) {

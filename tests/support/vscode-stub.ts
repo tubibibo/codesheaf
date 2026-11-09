@@ -37,6 +37,8 @@ export const events = {
 export const state = {
   enabled: true,
   items: [] as TrackedDisposable[],
+  /** Settings overrides keyed by `section.key` (e.g. `codesheaf.format`). */
+  settings: new Map<string, unknown>(),
 };
 const document = { getText: () => 'const value = 1;' };
 export const window = {
@@ -57,11 +59,25 @@ export const window = {
   },
 };
 export const workspace = {
-  getConfiguration: () => ({ get: () => state.enabled }),
+  getConfiguration: (section: string) => ({
+    get: (key: string, fallback?: unknown) => {
+      const fullKey = `${section}.${key}`;
+      if (state.settings.has(fullKey)) return state.settings.get(fullKey);
+      // Preserve the historical default: the status-bar toggle is driven by
+      // `setEnabled` unless a test pins an explicit setting override.
+      if (fullKey === 'codesheaf.statusBar.enabled') return state.enabled;
+      return fallback;
+    },
+  }),
   onDidChangeConfiguration: events.configuration.subscribe,
   onDidChangeTextDocument: events.document.subscribe,
 };
 export const StatusBarAlignment = { Right: 2 };
+
+/** Pins a settings value for `getConfiguration(section).get(key, fallback)`. */
+export function setSetting(fullKey: string, value: unknown): void {
+  state.settings.set(fullKey, value);
+}
 
 export function setEnabled(enabled: boolean): void {
   state.enabled = enabled;
@@ -73,5 +89,6 @@ export function setEnabled(enabled: boolean): void {
 export function reset(): void {
   state.enabled = true;
   state.items.length = 0;
+  state.settings.clear();
   for (const event of Object.values(events)) event.listeners.clear();
 }

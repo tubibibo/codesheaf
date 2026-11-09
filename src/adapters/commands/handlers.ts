@@ -31,6 +31,22 @@ function activeDocumentRef(editor: vscode.TextEditor): InputRef {
   };
 }
 
+/**
+ * Buffer state shared by every editor-command ref: live content, language,
+ * and — for virtual documents — import following disabled (ADR-0006). The
+ * selection variant must obey the same rule as the file variant: an
+ * untitled document's placeholder `fsPath` cannot anchor import resolution.
+ */
+function bufferRefFields(document: vscode.TextDocument): {
+  content: string;
+  languageId: string;
+  resolveImports?: false;
+} {
+  const virtual = document.uri.scheme !== 'file';
+  if (!virtual) return { content: document.getText(), languageId: document.languageId };
+  return { content: document.getText(), languageId: document.languageId, resolveImports: false };
+}
+
 /** Command: copy the active file as context (honors configured import depth). */
 export function copyActiveFile(deps: AppContainer): void {
   const editor = vscode.window.activeTextEditor;
@@ -73,8 +89,7 @@ export function copySelection(deps: AppContainer): void {
       absolutePath: editor.document.uri.fsPath,
       startLine,
       endLine,
-      content: editor.document.getText(),
-      languageId: editor.document.languageId,
+      ...bufferRefFields(editor.document),
     },
   ]);
 }

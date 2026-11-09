@@ -21,12 +21,16 @@
 | `CodeSheaf: Copy as LLM Context`                    | Right-click one or more files/folders in the Explorer. Folders expand into files (ignore-pruned, capped at 1000 files).                                    |
 
 The Editor context menu shows _Copy Selection as Context_ when text is
-selected, and _Copy Active File_ always; the Explorer context menu shows
-_Copy as LLM Context_. These menus intentionally remain available for all
-file types, not only languages with an import-scanning strategy. Text and
-configuration files can still be bundled without import following; binary
-files are skipped with the `binary` reason. Visibility does not mean every
-selected file will be included.
+selected, and _Copy Active File_ / _Copy Active File + Import Dependencies_
+for file and untitled editors; the Explorer context menu shows _Copy as LLM
+Context_ for real files and folders. These menus intentionally remain
+available for all file types, not only languages with an import-scanning
+strategy. Text and configuration files can still be bundled without import
+following; binary files are skipped with the `binary` reason. Visibility
+does not mean every selected file will be included. See
+[ADR-0007](adr/0007-menu-visibility-and-keybinding.md) for the full
+decision. The flagship command also has a default keybinding:
+`Ctrl+Alt+C` (`Cmd+Alt+C` on macOS) while an editor has focus.
 
 ## Output formats
 
@@ -74,8 +78,16 @@ separator lines.
   rule wins, so your exclude list can override gitignore). Nested
   `.gitignore` files in subdirectories are not read.
 - Files that cannot be woven are reported with a precise reason instead of
-  failing the bundle: `ignored`, `binary`, `too-large`, `not-found`,
-  `unreadable`, `empty-selection`, `depth-limit`, `limit-reached`.
+  failing the bundle: `ignored`, `binary`, `encoding`, `too-large`,
+  `not-found`, `unreadable`, `empty-selection`, `depth-limit`,
+  `limit-reached`. The `encoding` reason covers files whose bytes are not
+  valid UTF-8 (and are not UTF-16) — bundling them would silently replace
+  every invalid sequence with U+FFFD mojibake, so they are skipped instead.
+- Every skip and its reason is logged to the **CodeSheaf** output channel,
+  and previews render a trailing _Skipped Files_ section, so "why did this
+  file not make it in?" is always answerable. Clipboard copies keep the
+  bundle text clean (the count appears in the toast; details in the output
+  channel).
 
 ## Import following
 
@@ -100,16 +112,16 @@ that project's imports or CodeSheaf's own build configuration.
 
 ## Settings
 
-| Setting                        | Default              | Meaning                             |
-| ------------------------------ | -------------------- | ----------------------------------- |
-| `codesheaf.format`             | `markdown`           | `markdown` · `xml` · `plain`        |
-| `codesheaf.includeLineNumbers` | `false`              | Prefix lines with `N                | ` markers. |
-| `codesheaf.includeTree`        | `true`               | File tree at the top of the bundle. |
-| `codesheaf.maxImportDepth`     | `3`                  | 0–10; 0 disables import following.  |
-| `codesheaf.maxFileSizeKB`      | `256`                | Files above this size are skipped.  |
-| `codesheaf.respectGitignore`   | `true`               | Honor workspace `.gitignore` files. |
-| `codesheaf.exclude`            | build/lockfile globs | Extra gitignore-syntax patterns.    |
-| `codesheaf.statusBar.enabled`  | `true`               | Live token meter in the status bar. |
+| Setting                        | Default              | Meaning                                      |
+| ------------------------------ | -------------------- | -------------------------------------------- |
+| `codesheaf.format`             | `markdown`           | `markdown` · `xml` · `plain`                 |
+| `codesheaf.includeLineNumbers` | `false`              | Prefix every line with a 1-based `N` marker. |
+| `codesheaf.includeTree`        | `true`               | File tree at the top of the bundle.          |
+| `codesheaf.maxImportDepth`     | `3`                  | 0–10; 0 disables import following.           |
+| `codesheaf.maxFileSizeKB`      | `256`                | Files above this size are skipped.           |
+| `codesheaf.respectGitignore`   | `true`               | Honor workspace `.gitignore` files.          |
+| `codesheaf.exclude`            | build/lockfile globs | Extra gitignore-syntax patterns.             |
+| `codesheaf.statusBar.enabled`  | `true`               | Live token meter in the status bar.          |
 
 ## Known limitations
 

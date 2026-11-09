@@ -13,6 +13,7 @@ export type BundleFormat = 'markdown' | 'xml' | 'plain';
 export type SkipReason =
   | 'ignored'
   | 'binary'
+  | 'encoding'
   | 'too-large'
   | 'not-found'
   | 'unreadable'
@@ -68,6 +69,12 @@ export interface BundleOptions {
   readonly respectGitignore: boolean;
   /** Extra exclude globs (gitignore syntax), applied on top of `.gitignore`. */
   readonly exclude: readonly string[];
+  /**
+   * Render a trailing "Skipped files" section into the bundle text. Clipboard
+   * copies keep it off (the output channel logs every skip); previews force
+   * it on so the tab doubles as a review surface.
+   */
+  readonly includeSkippedSection?: boolean;
 }
 
 /** Glob patterns always excluded, before any user patterns (see {@link resolveExcludePatterns}). */
@@ -105,6 +112,7 @@ export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
   maxFileSizeKB: 256,
   respectGitignore: true,
   exclude: DEFAULT_EXCLUDES,
+  includeSkippedSection: false,
 };
 
 /**

@@ -35,10 +35,11 @@ exactly the local dependencies that matter."**
 - 📐 **Three output formats** — Markdown (fenced code blocks + file tree),
   XML (CDATA-safe, attribute-escaped), and plain text.
 - 🛡️ **Safe picking** — honors `.gitignore` plus your exclude globs; skips
-  binaries and oversized files with a precise per-file reason; explicit
-  picks always win (you asked for that file, you get it).
+  binaries, non-UTF-8 files, and oversized files with a precise per-file
+  reason; explicit picks always win (you asked for that file, you get it).
 - 🔍 **Preview before you paste** — render the exact bundle into a separate
-  editor tab instead of the clipboard.
+  editor tab instead of the clipboard; the preview also lists every skipped
+  file and why, so you can review what an LLM would (and would not) receive.
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
   the core enforced by ESLint; 155 unit tests; ~96% statement coverage over
   the core/application layers;
@@ -46,11 +47,22 @@ exactly the local dependencies that matter."**
 
 ## 🚀 Install
 
-**From VSIX** (no marketplace account needed):
+**Fastest path — download a ready-made VSIX from CI**: open the repo's
+[Actions](https://github.com/tubibibo/codesheaf/actions) tab, click the latest
+green run on `main`, and download the `codesheaf-vsix` artifact (GitHub login
+required), then:
 
 ```bash
+code --install-extension codesheaf-<version>.vsix
+```
+
+**Build the VSIX locally** (no marketplace account needed):
+
+```bash
+git clone https://github.com/tubibibo/codesheaf.git
+cd codesheaf && npm install && npm run compile
 npx @vscode/vsce package        # produces codesheaf-<version>.vsix
-code --install-extension codesheaf-1.0.0.vsix
+code --install-extension codesheaf-*.vsix
 ```
 
 **From source**:

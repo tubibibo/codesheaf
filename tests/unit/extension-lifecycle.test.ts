@@ -4,9 +4,16 @@ import { activate, deactivate } from '../../src/extension';
 import { events, reset, setEnabled, state, window } from '../support/vscode-stub';
 
 // Isolate entry-point ownership while exercising the real TokenMeter.
-vi.mock('../../src/composition/container', () => ({
-  createContainer: () => ({ estimator: () => 5, subscriptions: [] }),
-}));
+vi.mock('../../src/composition/container', async () => {
+  const { state } = await import('../support/vscode-stub');
+  return {
+    createContainer: () => ({
+      estimator: () => 5,
+      subscriptions: [],
+      config: { isStatusBarEnabled: () => state.enabled },
+    }),
+  };
+});
 vi.mock('../../src/adapters/commands/register', () => ({ registerAllCommands: () => [] }));
 
 function context(): ExtensionContext {

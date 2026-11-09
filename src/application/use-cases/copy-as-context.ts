@@ -1,4 +1,9 @@
-import type { BundleOptions, ContextBundle, InputRef } from '../../core/domain/bundle';
+import type {
+  BundleOptions,
+  ContextBundle,
+  InputRef,
+  SkippedEntry,
+} from '../../core/domain/bundle';
 import { BundleError } from '../../core/domain/errors';
 import type { ClipboardPort, ConfigPort, LoggerPort, NotificationPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
@@ -55,6 +60,11 @@ export async function copyAsContext(
       `CodeSheaf: copied ${bundle.files.length} file(s) · ~${formatTokenCount(bundle.estimatedTokens)} tokens${skippedNote}`,
     );
     deps.logger.debug(`bundle: ${bundle.files.map((f) => f.path).join(', ')}`);
+    if (bundle.skipped.length > 0) {
+      // The toast only carries the count; the output channel is where each
+      // skip and its reason stay inspectable (CONTRIBUTING promises this).
+      deps.logger.info(`skipped: ${describeSkips(bundle.skipped)}`);
+    }
     return {
       fileCount: bundle.files.length,
       estimatedTokens: bundle.estimatedTokens,
@@ -72,6 +82,16 @@ export async function copyAsContext(
 export function resolveOptions(base: BundleOptions, overrides: CopyOverrides): BundleOptions {
   if (overrides.ensureImportDepth === undefined) return base;
   return { ...base, maxImportDepth: Math.max(base.maxImportDepth, overrides.ensureImportDepth) };
+}
+
+/** How many skip entries are spelled out before the log switches to a count. */
+const SKIP_LOG_LIMIT = 50;
+
+/** `reason path, reason path, …` — truncated so huge directory picks stay sane. */
+export function describeSkips(skipped: readonly SkippedEntry[]): string {
+  const entries = skipped.map((entry) => `${entry.reason} ${entry.path}`);
+  if (entries.length <= SKIP_LOG_LIMIT) return entries.join(', ');
+  return `${entries.slice(0, SKIP_LOG_LIMIT).join(', ')} …and ${entries.length - SKIP_LOG_LIMIT} more`;
 }
 
 export function describe(error: unknown): string {

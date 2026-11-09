@@ -1,6 +1,12 @@
-import type { BundleFormat, BundledFile } from '../domain/bundle';
+import type { BundleFormat, BundledFile, SkippedEntry } from '../domain/bundle';
 import { escapeXmlAttribute, toCdata, longestBacktickRun, withLineNumbers } from '../utils/text';
 import { formatTokenCount } from '../utils/format';
+
+/** How many skipped entries are listed before the section switches to a count. */
+const SKIPPED_SECTION_LIMIT = 50;
+
+/** Width of the plain-text separator rules. */
+const PLAIN_SEPARATOR_WIDTH = 78;
 
 /** Everything the renderer needs — precomputed by the bundle builder. */
 export interface RenderInput {
@@ -11,6 +17,12 @@ export interface RenderInput {
   readonly includeTree: boolean;
   /** Display string such as `CodeSheaf v1.0.1`. */
   readonly generator: string;
+  /**
+   * Candidates that were evaluated but left out — rendered as a trailing
+   * section when present (previews force it on; clipboard copies leave it
+   * off and log the details to the output channel instead).
+   */
+  readonly skipped?: readonly SkippedEntry[];
 }
 
 /** Renders the final bundle text in the requested format. */
@@ -24,6 +36,20 @@ export function renderBundle(input: RenderInput): string {
     default:
       return renderMarkdown(input);
   }
+}
+
+/** The skip rows to render: capped, so a directory pick cannot flood the section. */
+function skippedRows(skipped: readonly SkippedEntry[]): {
+  rows: readonly SkippedEntry[];
+  hidden: number;
+} {
+  if (skipped.length <= SKIPPED_SECTION_LIMIT) {
+    return { rows: skipped, hidden: 0 };
+  }
+  return {
+    rows: skipped.slice(0, SKIPPED_SECTION_LIMIT),
+    hidden: skipped.length - SKIPPED_SECTION_LIMIT,
+  };
 }
 
 function totalTokens(files: readonly BundledFile[]): number {
@@ -54,7 +80,22 @@ function renderMarkdown(input: RenderInput): string {
       '',
     );
   }
+  appendMarkdownSkippedSection(parts, input.skipped);
   return `${parts.join('\n').trimEnd()}\n`;
+}
+
+function appendMarkdownSkippedSection(
+  parts: string[],
+  skipped: readonly SkippedEntry[] | undefined,
+): void {
+  if (skipped === undefined || skipped.length === 0) return;
+  const { rows, hidden } = skippedRows(skipped);
+  parts.push('## Skipped Files', '');
+  for (const entry of rows) {
+    parts.push(`- \`${markdownHeadingPath(entry.path)}\` — ${entry.reason}`);
+  }
+  if (hidden > 0) parts.push(`- … and ${hidden} more (see the CodeSheaf output channel)`);
+  parts.push('');
 }
 
 /** Keeps a path literal and on one heading line without changing file content. */
@@ -107,13 +148,28 @@ function renderXml(input: RenderInput): string {
     lines.push(`    ${toCdata(bodyOf(file, includeLineNumbers))}`);
     lines.push('  </file>');
   }
+  if (input.skipped !== undefined && input.skipped.length > 0) {
+    const { rows, hidden } = skippedRows(input.skipped);
+    lines.push(`  <skipped count="${input.skipped.length}">`);
+    for (const entry of rows) {
+      lines.push(
+        `    <file path="${escapeXmlAttribute(entry.path)}" reason="${escapeXmlAttribute(entry.reason)}" />`,
+      );
+    }
+    if (hidden > 0) {
+      lines.push(
+        `    <truncated hidden="${hidden}" note="see the CodeSheaf output channel for the full list" />`,
+      );
+    }
+    lines.push('  </skipped>');
+  }
   lines.push('</codesheaf>');
   return `${lines.join('\n')}\n`;
 }
 
 function renderPlain(input: RenderInput): string {
   const { files, tree, includeLineNumbers, includeTree, generator } = input;
-  const separator = '='.repeat(78);
+  const separator = '='.repeat(PLAIN_SEPARATOR_WIDTH);
   const parts: string[] = [];
   parts.push(separator);
   parts.push(
@@ -131,5 +187,20 @@ function renderPlain(input: RenderInput): string {
     parts.push(bodyOf(file, includeLineNumbers));
     parts.push('');
   }
+  appendPlainSkippedSection(parts, input.skipped);
   return `${parts.join('\n').trimEnd()}\n`;
+}
+
+function appendPlainSkippedSection(
+  parts: string[],
+  skipped: readonly SkippedEntry[] | undefined,
+): void {
+  if (skipped === undefined || skipped.length === 0) return;
+  const { rows, hidden } = skippedRows(skipped);
+  parts.push(`SKIPPED (${skipped.length}):`);
+  for (const entry of rows) {
+    parts.push(`  ${entry.path} — ${entry.reason}`);
+  }
+  if (hidden > 0) parts.push(`  … and ${hidden} more (see the CodeSheaf output channel)`);
+  parts.push('');
 }

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Files whose bytes are not valid UTF-8 (GBK/GB18030 legacy files, for
+  example) are now skipped with a precise `encoding` reason. Previously they
+  were decoded non-strictly, silently replacing every invalid sequence with
+  U+FFFD and weaving mojibake into the bundle. UTF-16 files (BOM-detected)
+  are unaffected.
+- Mistyped `codesheaf.exclude` entries (numbers, objects) no longer crash
+  the bundle mid-build, and mistyped boolean settings (`"off"` stored as a
+  string used to count as truthy and _enable_ the feature it was meant to
+  disable) now fall back to their documented defaults — the same guard
+  class as the 1.0 numeric fix. The status-bar toggle reads through the
+  same guarded configuration port.
+
+### Added
+
+- Every skip and its reason is logged to the CodeSheaf output channel, and
+  previews render a trailing _Skipped Files_ section (capped at 50 rows) so
+  bundles can be reviewed before sharing. Clipboard copies keep the bundle
+  text clean.
+- The Editor context menu now offers _Copy Active File + Import
+  Dependencies_, and the command has a default keybinding (`Ctrl+Alt+C`,
+  `Cmd+Alt+C` on macOS).
+- Context-menu entries are narrowed to the schemes where they can work:
+  editor commands appear for `file` and `untitled` documents, the Explorer
+  command for real files and folders. All file _types_ remain included —
+  see [ADR-0007](docs/adr/0007-menu-visibility-and-keybinding.md).
+
+### Changed
+
+- The import-containment path geometry (common-ancestor computation) moved
+  from `bundle-builder.ts` into `core/utils/ancestor-path.ts` with its own
+  direct unit tests; behavior is unchanged.
+
 ## [1.0.2] - 2026-11-07
 
 ### Fixed

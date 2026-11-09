@@ -18,3 +18,14 @@ export function clampInt(value: number, fallback: number, min: number, max?: num
   const floored = Math.floor(value);
   return Math.min(Math.max(floored, min), max ?? Number.POSITIVE_INFINITY);
 }
+
+/**
+ * Guards a boolean setting the same way {@link clampInt} guards numbers:
+ * VS Code hands back whatever settings.json stored, so a string `"off"`
+ * typed as a boolean is truthy and would silently *enable* the very
+ * feature it was meant to disable. Anything but a real boolean falls
+ * back to the documented default.
+ */
+export function asBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}

@@ -1,12 +1,8 @@
 import { realpath } from 'node:fs/promises';
 import * as vscode from 'vscode';
 import type { DirectoryEntry, FileReadResult, FileSystemPort } from '../../core/ports';
-import {
-  hasUtf16BeBom,
-  hasUtf16LeBom,
-  isBinaryExtension,
-  isProbablyBinary,
-} from '../../core/utils/binary';
+import { isBinaryExtension, isProbablyBinary } from '../../core/utils/binary';
+import { decodeUtf16ByBom, decodeUtf8Strict } from '../../core/utils/decode';
 
 /** Adapter: VS Code virtual file system -> {@link FileSystemPort}. */
 export class VsCodeFileSystem implements FileSystemPort {
@@ -39,16 +35,14 @@ export class VsCodeFileSystem implements FileSystemPort {
       const bytes = await vscode.workspace.fs.readFile(uri);
       // UTF-16 text is NUL-interleaved but genuinely text: decode it
       // before the NUL sniff ever gets a chance to call it binary.
-      if (hasUtf16LeBom(bytes)) {
-        return { ok: true, content: new TextDecoder('utf-16le').decode(bytes) };
-      }
-      if (hasUtf16BeBom(bytes)) {
-        return { ok: true, content: new TextDecoder('utf-16be').decode(bytes) };
-      }
+      const utf16 = decodeUtf16ByBom(bytes);
+      if (utf16 !== undefined) return { ok: true, content: utf16 };
       if (isProbablyBinary(bytes) || isBinaryExtension(absolutePath)) {
         return { ok: false, reason: 'binary' };
       }
-      return { ok: true, content: new TextDecoder('utf-8').decode(bytes) };
+      // Strict UTF-8: invalid sequences are an explicit `encoding` skip
+      // instead of silent U+FFFD mojibake woven into the bundle.
+      return decodeUtf8Strict(bytes);
     } catch {
       return { ok: false, reason: 'unreadable' };
     }

@@ -23,9 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Own the current meter once, rather than retaining every toggled instance.
   context.subscriptions.push({ dispose: disposeMeter });
   const syncMeter = (): void => {
-    const enabled = vscode.workspace
-      .getConfiguration('codesheaf')
-      .get<boolean>('statusBar.enabled', true);
+    const enabled = container.config.isStatusBarEnabled();
     if (enabled && meter === undefined) {
       meter = new TokenMeter(container.estimator);
     } else if (!enabled && meter !== undefined) {

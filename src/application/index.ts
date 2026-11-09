@@ -2,6 +2,7 @@ export {
   copyAsContext,
   resolveOptions,
   describe,
+  describeSkips,
   type CopyOverrides,
   type CopyResult,
   type CopyUseCaseDeps,
