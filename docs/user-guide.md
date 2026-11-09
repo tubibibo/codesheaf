@@ -110,18 +110,56 @@ Explorer to include them, then review the preview before sharing. This is
 a limitation of scanning the target project, not a requirement to change
 that project's imports or CodeSheaf's own build configuration.
 
+## Secret scanning
+
+CodeSheaf's whole job is sending code somewhere else — so a stray `.env` or a
+pasted key woven into a bundle is the one accident it should try to prevent.
+Before a bundle reaches the clipboard, CodeSheaf can scan it for likely
+credentials (`codesheaf.secretScan`, default `warn`; see
+[ADR-0008](adr/0008-secret-scanning.md)):
+
+- **`warn`** — when the woven text matches a rule, a modal dialog lists how
+  many findings, which rules, and the first location (e.g.
+  `src/config.ts:14`). **Copy anyway** proceeds; **Cancel** (or dismissing
+  the dialog) copies nothing and points you at **Preview** to inspect the
+  flagged lines. Every finding is also written to the CodeSheaf output
+  channel as `path:line ruleId`.
+- **`off`** — no scanning at all.
+
+Previews never block: they are the review surface, so a flagged bundle still
+opens, with a warning summarizing what the scan saw. Findings never echo the
+matched text — only the rule, file, and line — so warnings and logs stay
+safe to read and share.
+
+| Rule id                         | What it flags                                                 |
+| ------------------------------- | ------------------------------------------------------------- |
+| `aws-access-key`                | `AKIA…` access key IDs (16 uppercase/digits)                  |
+| `private-key-block`             | `-----BEGIN … PRIVATE KEY-----` PEM headers                   |
+| `github-token`                  | `ghp_`/`gho_`/`ghu_`/`ghs_`/`ghr_` and `github_pat_` tokens   |
+| `slack-token`                   | `xoxb-`/`xoxa-`/`xoxp-`/`xoxr-`/`xoxs-` tokens                |
+| `google-api-key`                | `AIza…` API keys                                              |
+| `openai-key`                    | `sk-…` API keys (OpenAI-shaped; Anthropic `sk-ant-` too)      |
+| `generic-credential-assignment` | `API_KEY=…`, `PASSWORD: …` style assignments with long values |
+
+This is a **conservative heuristic, not a Secretlint replacement**: it can
+miss secrets (lowercase assignments, exotic token formats) and it can raise
+false positives. The escape hatch for false positives is one click —
+**Copy anyway** — and obvious test placeholders (`changeme`, `example`,
+`placeholder`, `xxxx`, repeated characters) are already filtered out.
+
 ## Settings
 
-| Setting                        | Default              | Meaning                                      |
-| ------------------------------ | -------------------- | -------------------------------------------- |
-| `codesheaf.format`             | `markdown`           | `markdown` · `xml` · `plain`                 |
-| `codesheaf.includeLineNumbers` | `false`              | Prefix every line with a 1-based `N` marker. |
-| `codesheaf.includeTree`        | `true`               | File tree at the top of the bundle.          |
-| `codesheaf.maxImportDepth`     | `3`                  | 0–10; 0 disables import following.           |
-| `codesheaf.maxFileSizeKB`      | `256`                | Files above this size are skipped.           |
-| `codesheaf.respectGitignore`   | `true`               | Honor workspace `.gitignore` files.          |
-| `codesheaf.exclude`            | build/lockfile globs | Extra gitignore-syntax patterns.             |
-| `codesheaf.statusBar.enabled`  | `true`               | Live token meter in the status bar.          |
+| Setting                        | Default              | Meaning                                                          |
+| ------------------------------ | -------------------- | ---------------------------------------------------------------- |
+| `codesheaf.format`             | `markdown`           | `markdown` · `xml` · `plain`                                     |
+| `codesheaf.includeLineNumbers` | `false`              | Prefix every line with a 1-based `N` marker.                     |
+| `codesheaf.includeTree`        | `true`               | File tree at the top of the bundle.                              |
+| `codesheaf.maxImportDepth`     | `3`                  | 0–10; 0 disables import following.                               |
+| `codesheaf.maxFileSizeKB`      | `256`                | Files above this size are skipped.                               |
+| `codesheaf.respectGitignore`   | `true`               | Honor workspace `.gitignore` files.                              |
+| `codesheaf.exclude`            | build/lockfile globs | Extra gitignore-syntax patterns.                                 |
+| `codesheaf.secretScan`         | `warn`               | Ask before copying a bundle with likely secrets; `off` disables. |
+| `codesheaf.statusBar.enabled`  | `true`               | Live token meter in the status bar.                              |
 
 ## Known limitations
 

@@ -9,6 +9,13 @@
 /** Output formats supported by the bundle renderer. */
 export type BundleFormat = 'markdown' | 'xml' | 'plain';
 
+/**
+ * How bundles are checked for likely secrets before they leave the machine
+ * (see ADR-0008). `warn` scans at copy time and asks for confirmation when
+ * something looks like a credential; `off` disables scanning entirely.
+ */
+export type SecretScanMode = 'off' | 'warn';
+
 /** Why a candidate file was not included in the bundle. */
 export type SkipReason =
   | 'ignored'
@@ -75,6 +82,13 @@ export interface BundleOptions {
    * it on so the tab doubles as a review surface.
    */
   readonly includeSkippedSection?: boolean;
+  /**
+   * Whether the woven text is scanned for likely secrets (conservative
+   * heuristics — see `core/services/secret-scanner.ts`). `warn` makes a
+   * copy of a flagged bundle ask for confirmation before the clipboard
+   * write; previews stay non-blocking and only surface a warning.
+   */
+  readonly secretScan: SecretScanMode;
 }
 
 /** Glob patterns always excluded, before any user patterns (see {@link resolveExcludePatterns}). */
@@ -113,6 +127,7 @@ export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
   respectGitignore: true,
   exclude: DEFAULT_EXCLUDES,
   includeSkippedSection: false,
+  secretScan: 'warn',
 };
 
 /**

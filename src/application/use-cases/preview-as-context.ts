@@ -2,7 +2,13 @@ import type { BundleFormat, BundleOptions, InputRef } from '../../core/domain/bu
 import type { ConfigPort, LoggerPort, NotificationPort, PreviewPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
 import { formatTokenCount } from '../../core/utils/format';
-import { describe, resolveOptions, type CopyOverrides } from './copy-as-context';
+import {
+  collectSecretFindings,
+  describe,
+  resolveOptions,
+  summarizeSecretFindings,
+  type CopyOverrides,
+} from './copy-as-context';
 
 export interface PreviewUseCaseDeps {
   readonly builder: BundleBuilder;
@@ -51,6 +57,17 @@ export async function previewAsContext(
         'CodeSheaf: nothing to preview — every candidate file was skipped.',
       );
       return false;
+    }
+    // Previews are the review surface (ADR-0008): a flagged bundle still
+    // opens — the user asked to look at it — but the warning names what the
+    // scan saw. Copying that same bundle keeps its own confirmation.
+    if (options.secretScan === 'warn') {
+      const findings = collectSecretFindings(bundle.files);
+      if (findings.length > 0) {
+        deps.notifier.showWarning(
+          `CodeSheaf: ${summarizeSecretFindings(findings, 'preview')}. Copying will still ask for confirmation.`,
+        );
+      }
     }
     await deps.preview.openText(bundle.rendered, previewLanguageForFormat(bundle.format));
     deps.notifier.showInformation(

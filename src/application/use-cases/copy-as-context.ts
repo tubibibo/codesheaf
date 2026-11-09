@@ -1,5 +1,6 @@
 import type {
   BundleOptions,
+  BundledFile,
   ContextBundle,
   InputRef,
   SkippedEntry,
@@ -7,6 +8,7 @@ import type {
 import { BundleError } from '../../core/domain/errors';
 import type { ClipboardPort, ConfigPort, LoggerPort, NotificationPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
+import { scanText, type SecretFinding } from '../../core/services/secret-scanner';
 import { formatTokenCount } from '../../core/utils/format';
 
 export interface CopyUseCaseDeps {
@@ -31,7 +33,8 @@ export interface CopyResult {
 /**
  * Use case: weave the given inputs into a bundle and copy the rendered
  * text to the clipboard. Returns `undefined` when the user was already
- * notified about an empty or failed bundle.
+ * notified about an empty or failed bundle — or when the secret-scan
+ * confirmation (ADR-0008) was dismissed, in which case nothing is copied.
  *
  * The whole body — clipboard write and notifications included — lives in
  * one catch: command handlers invoke this as fire-and-forget (`void`), so
@@ -52,6 +55,27 @@ export async function copyAsContext(
         'CodeSheaf: nothing to copy — every candidate file was skipped (ignored, binary, too large, or unreadable).',
       );
       return undefined;
+    }
+
+    // Warn flow (ADR-0008): the scan never blocks silently — it stands one
+    // modal question between a flagged bundle and the clipboard.
+    if (options.secretScan === 'warn') {
+      const findings = collectSecretFindings(bundle.files);
+      if (findings.length > 0) {
+        const choice = await deps.notifier.confirm(
+          `CodeSheaf: ${summarizeSecretFindings(findings, 'bundle')}. Copy anyway?`,
+          ['Copy anyway', 'Cancel'],
+        );
+        if (choice !== 'Copy anyway') {
+          // Same contract as skip details: the output channel keeps every
+          // finding inspectable, the toast stays short.
+          deps.logger.warn(`secret findings: ${describeSecretFindings(findings)}`);
+          deps.notifier.showWarning(
+            'CodeSheaf: nothing was copied. Run Preview Context Bundle to inspect the flagged lines first.',
+          );
+          return undefined;
+        }
+      }
     }
 
     await deps.clipboard.writeText(bundle.rendered);
@@ -92,6 +116,47 @@ export function describeSkips(skipped: readonly SkippedEntry[]): string {
   const entries = skipped.map((entry) => `${entry.reason} ${entry.path}`);
   if (entries.length <= SKIP_LOG_LIMIT) return entries.join(', ');
   return `${entries.slice(0, SKIP_LOG_LIMIT).join(', ')} …and ${entries.length - SKIP_LOG_LIMIT} more`;
+}
+
+/** A {@link SecretFinding} pinned to the bundle file it came from. */
+export interface SecretFileFinding extends SecretFinding {
+  readonly path: string;
+}
+
+/** Scans every bundled file and aggregates the findings in bundle order. */
+export function collectSecretFindings(files: readonly BundledFile[]): SecretFileFinding[] {
+  const findings: SecretFileFinding[] = [];
+  for (const file of files) {
+    for (const finding of scanText(file.content)) {
+      findings.push({ ...finding, path: file.path });
+    }
+  }
+  return findings;
+}
+
+/**
+ * `N possible secret(s) in this <where> (labels; first: path:line)` — the
+ * shared core of the copy confirmation and the preview warning. Never
+ * includes the matched content itself (ADR-0008).
+ */
+export function summarizeSecretFindings(
+  findings: readonly SecretFileFinding[],
+  where: 'bundle' | 'preview',
+): string {
+  const labels = [...new Set(findings.map((f) => f.label))].join(', ');
+  const first = findings[0];
+  const at = first === undefined ? '?' : `${first.path}:${first.line}`;
+  return `${findings.length} possible secret(s) in this ${where} (${labels}; first: ${at})`;
+}
+
+/** How many secret findings are spelled out before the log switches to a count. */
+const SECRET_LOG_LIMIT = 50;
+
+/** `path:line ruleId, …` — same detail style (and cap) as {@link describeSkips}. */
+export function describeSecretFindings(findings: readonly SecretFileFinding[]): string {
+  const entries = findings.map((finding) => `${finding.path}:${finding.line} ${finding.ruleId}`);
+  if (entries.length <= SECRET_LOG_LIMIT) return entries.join(', ');
+  return `${entries.slice(0, SECRET_LOG_LIMIT).join(', ')} …and ${entries.length - SECRET_LOG_LIMIT} more`;
 }
 
 export function describe(error: unknown): string {

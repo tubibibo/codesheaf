@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Secret scanning before a bundle reaches the clipboard (`codesheaf.secretScan`,
+  default `warn`): a conservative, zero-dependency scan for common credential
+  patterns (AWS/GitHub/Slack/Google/OpenAI keys, private key blocks,
+  credential-shaped assignments). A flagged copy shows a modal confirmation —
+  **Copy anyway** proceeds, **Cancel** copies nothing and points at Preview;
+  flagged previews open anyway with a summary warning. Findings report only
+  rule, file, and line — never the matched text. This is a conservative
+  heuristic, not a Secretlint replacement; see
+  [ADR-0008](docs/adr/0008-secret-scanning.md).
 - Every skip and its reason is logged to the CodeSheaf output channel, and
   previews render a trailing _Skipped Files_ section (capped at 50 rows) so
   bundles can be reviewed before sharing. Clipboard copies keep the bundle

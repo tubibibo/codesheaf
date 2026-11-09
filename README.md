@@ -37,6 +37,11 @@ exactly the local dependencies that matter."**
 - 🛡️ **Safe picking** — honors `.gitignore` plus your exclude globs; skips
   binaries, non-UTF-8 files, and oversized files with a precise per-file
   reason; explicit picks always win (you asked for that file, you get it).
+- 🛡️ **Secret warning before you paste** — a conservative, zero-dependency
+  scan flags likely credentials (AWS/GitHub/Slack/Google/OpenAI keys, private
+  key blocks, credential-shaped assignments) and asks for confirmation before
+  a flagged bundle reaches the clipboard; false positives are answered with
+  one **Copy anyway** click.
 - 🔍 **Preview before you paste** — render the exact bundle into a separate
   editor tab instead of the clipboard; the preview also lists every skipped
   file and why, so you can review what an LLM would (and would not) receive.

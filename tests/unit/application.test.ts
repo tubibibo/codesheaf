@@ -9,6 +9,7 @@ import type {
 } from '../../src/core/ports';
 import {
   copyAsContext,
+  describeSecretFindings,
   describeSkips,
   previewAsContext,
   previewLanguageForFormat,
@@ -21,6 +22,9 @@ import { makeBuilder } from '../support/harness';
 const FIXTURES: Record<string, string> = {
   [`${PROJECT_ROOT}/src/a.ts`]: 'import { b } from "./b";\nexport const a = 1;\n',
   [`${PROJECT_ROOT}/src/b.ts`]: 'export const b = 2;\n',
+  // A stand-in leaked credential for the secret-scan warn flow (ADR-0008).
+  [`${PROJECT_ROOT}/src/creds.ts`]:
+    'const deployToken = "ghp_123456789012345678901234567890123456";\n',
   [`${PROJECT_ROOT}/data.bin`]: 'x\x00y\n',
 };
 
@@ -37,6 +41,9 @@ class FakeNotifier implements NotificationPort {
   readonly info: string[] = [];
   readonly warnings: string[] = [];
   readonly errors: string[] = [];
+  readonly confirms: { message: string; actions: readonly string[] }[] = [];
+  /** What the next `confirm` resolves with; `undefined` models a dismissed dialog. */
+  confirmAnswer: string | undefined;
   showInformation(message: string): void {
     this.info.push(message);
   }
@@ -45,6 +52,10 @@ class FakeNotifier implements NotificationPort {
   }
   showError(message: string): void {
     this.errors.push(message);
+  }
+  async confirm(message: string, actions: readonly string[]): Promise<string | undefined> {
+    this.confirms.push({ message, actions });
+    return this.confirmAnswer;
   }
 }
 
@@ -86,6 +97,7 @@ function makeDeps(configOptions: Partial<typeof DEFAULT_BUNDLE_OPTIONS> = {}): {
   preview: PreviewUseCaseDeps;
   clipboard: FakeClipboard;
   notifier: FakeNotifier;
+  logger: FakeLogger;
   previewPort: FakePreview;
 } {
   const { builder } = makeBuilder(FIXTURES);
@@ -99,6 +111,7 @@ function makeDeps(configOptions: Partial<typeof DEFAULT_BUNDLE_OPTIONS> = {}): {
     preview: { builder, config, preview: previewPort, notifier, logger },
     clipboard,
     notifier,
+    logger,
     previewPort,
   };
 }
@@ -217,6 +230,88 @@ describe('describeSkips', () => {
     }));
     const text = describeSkips(entries);
     expect(text).toContain('ignored f49.ts');
+    expect(text).not.toContain('f50.ts');
+    expect(text.endsWith('…and 10 more')).toBe(true);
+  });
+});
+
+describe('secret scanning (warn flow, ADR-0008)', () => {
+  const secretRef = { kind: 'file' as const, absolutePath: `${PROJECT_ROOT}/src/creds.ts` };
+
+  it('blocks the clipboard behind a confirm when a finding is reported', async () => {
+    const deps = makeDeps();
+    const result = await copyAsContext(deps.copy, [secretRef]);
+    expect(deps.notifier.confirms).toHaveLength(1);
+    expect(deps.notifier.confirms[0]?.message).toContain('1 possible secret(s) in this bundle');
+    expect(deps.notifier.confirms[0]?.message).toContain('GitHub token');
+    expect(deps.notifier.confirms[0]?.message).toContain('src/creds.ts:1');
+    expect(deps.notifier.confirms[0]?.message).not.toContain('ghp_');
+    expect(deps.notifier.confirms[0]?.actions).toEqual(['Copy anyway', 'Cancel']);
+    // dismissed (undefined) means: nothing copied, user told why, details logged
+    expect(result).toBeUndefined();
+    expect(deps.clipboard.texts).toHaveLength(0);
+    expect(deps.notifier.warnings.at(-1)).toContain('nothing was copied');
+    expect(deps.logger.lines.at(-1)).toContain('secret findings:');
+    expect(deps.logger.lines.at(-1)).toContain('src/creds.ts:1 github-token');
+  });
+
+  it('copies when the user chooses Copy anyway', async () => {
+    const deps = makeDeps();
+    deps.notifier.confirmAnswer = 'Copy anyway';
+    const result = await copyAsContext(deps.copy, [secretRef]);
+    expect(result?.fileCount).toBe(1);
+    expect(deps.clipboard.texts).toHaveLength(1);
+  });
+
+  it('never confirms and copies straight away when secretScan is off', async () => {
+    const deps = makeDeps({ secretScan: 'off' });
+    const result = await copyAsContext(deps.copy, [secretRef]);
+    expect(deps.notifier.confirms).toHaveLength(0);
+    expect(deps.clipboard.texts).toHaveLength(1);
+    expect(result?.fileCount).toBe(1);
+  });
+
+  it('leaves clean bundles alone', async () => {
+    const deps = makeDeps();
+    const result = await copyAsContext(deps.copy, [
+      { kind: 'file', absolutePath: `${PROJECT_ROOT}/src/a.ts` },
+    ]);
+    expect(deps.notifier.confirms).toHaveLength(0);
+    expect(deps.clipboard.texts).toHaveLength(1);
+    expect(result?.fileCount).toBe(2);
+  });
+
+  it('warns about findings in preview without blocking it', async () => {
+    const deps = makeDeps();
+    const ok = await previewAsContext(deps.preview, [secretRef]);
+    expect(ok).toBe(true);
+    expect(deps.previewPort.opened).toHaveLength(1);
+    expect(deps.notifier.confirms).toHaveLength(0);
+    expect(deps.notifier.warnings[0]).toContain('1 possible secret(s) in this preview');
+    expect(deps.notifier.warnings[0]).toContain('src/creds.ts:1');
+    expect(deps.notifier.warnings[0]).not.toContain('ghp_');
+  });
+
+  it('stays silent in preview when secretScan is off', async () => {
+    const deps = makeDeps({ secretScan: 'off' });
+    const ok = await previewAsContext(deps.preview, [secretRef]);
+    expect(ok).toBe(true);
+    expect(deps.notifier.warnings).toHaveLength(0);
+    expect(deps.previewPort.opened).toHaveLength(1);
+  });
+});
+
+describe('describeSecretFindings', () => {
+  it('lists path:line ruleId entries and truncates like skip details', () => {
+    const findings = Array.from({ length: 60 }, (_, index) => ({
+      path: `f${index}.ts`,
+      ruleId: 'aws-access-key',
+      label: 'AWS access key ID',
+      line: index + 1,
+    }));
+    const text = describeSecretFindings(findings);
+    expect(text).toContain('f0.ts:1 aws-access-key');
+    expect(text).toContain('f49.ts:50 aws-access-key');
     expect(text).not.toContain('f50.ts');
     expect(text.endsWith('…and 10 more')).toBe(true);
   });

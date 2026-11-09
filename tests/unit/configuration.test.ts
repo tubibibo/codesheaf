@@ -17,6 +17,7 @@ describe('VsCodeConfiguration poisoning guards', () => {
     expect(value.maxFileSizeKB).toBe(256);
     expect(value.respectGitignore).toBe(true);
     expect(value.exclude).toEqual(DEFAULT_BUNDLE_OPTIONS.exclude);
+    expect(value.secretScan).toBe('warn');
   });
 
   it('falls back to defaults for non-numeric numeric settings (CS-P1-01 class)', () => {
@@ -50,6 +51,15 @@ describe('VsCodeConfiguration poisoning guards', () => {
   it('rejects unknown formats', () => {
     setSetting('codesheaf.format', 'yaml');
     expect(options().format).toBe('markdown');
+  });
+
+  it('honors a real secretScan mode and falls back to warn for mistyped values', () => {
+    setSetting('codesheaf.secretScan', 'off');
+    expect(options().secretScan).toBe('off');
+    setSetting('codesheaf.secretScan', 'enabled'); // not one of off/warn
+    expect(options().secretScan).toBe('warn');
+    setSetting('codesheaf.secretScan', 42);
+    expect(options().secretScan).toBe('warn');
   });
 });
 

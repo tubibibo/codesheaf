@@ -1,16 +1,18 @@
 import * as vscode from 'vscode';
-import type { BundleFormat, BundleOptions } from '../../core/domain/bundle';
+import type { BundleFormat, BundleOptions, SecretScanMode } from '../../core/domain/bundle';
 import { resolveExcludePatterns } from '../../core/domain/bundle';
 import type { ConfigPort } from '../../core/ports';
 import { asBoolean, clampInt } from '../../core/utils/numbers';
 
 const FORMATS: readonly BundleFormat[] = ['markdown', 'xml', 'plain'];
+const SECRET_SCAN_MODES: readonly SecretScanMode[] = ['off', 'warn'];
 
 /** Adapter: VS Code configuration -> {@link ConfigPort}, with sane fallbacks. */
 export class VsCodeConfiguration implements ConfigPort {
   getBundleOptions(): BundleOptions {
     const config = vscode.workspace.getConfiguration('codesheaf');
     const format = config.get<BundleFormat>('format', 'markdown');
+    const secretScan = config.get<SecretScanMode>('secretScan', 'warn');
     return {
       format: FORMATS.includes(format) ? format : 'markdown',
       // Mistyped settings must not poison any option class: numbers used to
@@ -27,6 +29,7 @@ export class VsCodeConfiguration implements ConfigPort {
           .get<unknown[]>('exclude', [])
           .filter((pattern): pattern is string => typeof pattern === 'string'),
       ),
+      secretScan: SECRET_SCAN_MODES.includes(secretScan) ? secretScan : 'warn',
     };
   }
 

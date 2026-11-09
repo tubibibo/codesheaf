@@ -155,6 +155,19 @@
           "default": [],
           "description": "Extra exclude globs; applied after the built-in defaults and .gitignore rules."
         },
+        "codesheaf.secretScan": {
+          "type": "string",
+          "default": "warn",
+          "enum": [
+            "off",
+            "warn"
+          ],
+          "enumDescriptions": [
+            "No secret checking.",
+            "Scan the bundle for likely credentials and ask for confirmation before copying."
+          ],
+          "description": "Scan bundles for likely credentials before they leave the machine. `warn` scans at copy time and shows a confirmation dialog listing what was found (choose Copy anyway to proceed); `off` disables scanning entirely. This is a conservative heuristic — it can miss secrets and can raise false positives — not a replacement for a dedicated scanner."
+        },
         "codesheaf.statusBar.enabled": {
           "type": "boolean",
           "default": true,

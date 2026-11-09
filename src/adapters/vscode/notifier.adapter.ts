@@ -14,4 +14,8 @@ export class VsCodeNotifier implements NotificationPort {
   showError(message: string): void {
     void vscode.window.showErrorMessage(message);
   }
+
+  async confirm(message: string, actions: readonly string[]): Promise<string | undefined> {
+    return vscode.window.showWarningMessage(message, { modal: true }, ...actions);
+  }
 }
