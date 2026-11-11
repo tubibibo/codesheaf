@@ -47,6 +47,8 @@ interface WorkingFile {
   readonly fullContent: string;
   /** Content that goes into the bundle (sliced for selections). */
   readonly outputContent: string;
+  /** Estimated tokens of the output content (ADR-0004), for the budget and the final totals. */
+  readonly tokens: number;
   readonly origin: FileOrigin;
   /** Whether this file's import declarations may be followed (ADR-0006). */
   readonly importsEnabled: boolean;
@@ -73,6 +75,8 @@ interface BuildContext {
   readonly skipSeen: Set<string>;
   /** Every path probed or registered, so imports are never processed twice. */
   readonly attempted: Set<string>;
+  /** Running estimate of admitted files' tokens — the budget meter. */
+  spentTokens: number;
 }
 
 /**
@@ -109,6 +113,7 @@ export class BundleBuilder {
       skipped: [],
       skipSeen: new Set(),
       attempted: new Set(),
+      spentTokens: 0,
     };
 
     // Level 0: explicit inputs, in the order given.
@@ -161,6 +166,12 @@ export class BundleBuilder {
         if (abs === undefined) continue;
         const key = dedupeKey(abs);
         if (ctx.filesByPath.has(key) || ctx.attempted.has(key)) continue;
+        if (this.overTokenBudget(ctx)) {
+          // Budget spent: the rest of the closure is a deliberate skip, not
+          // a resolution miss — each dropped candidate keeps its own entry.
+          this.recordSkip(abs, 'limit-reached', ctx);
+          continue;
+        }
         // Extension/index probing produces many non-existent variants; missing
         // candidates are resolution misses, not meaningful skips.
         const loaded = await this.loadFile(
@@ -366,6 +377,7 @@ export class BundleBuilder {
       languageId: ref.languageId ?? languageIdForPath(absolutePath),
       fullContent: read.content,
       outputContent,
+      tokens: estimateTokens(outputContent),
       origin,
       importsEnabled: ref.resolveImports !== false,
     };
@@ -389,6 +401,9 @@ export class BundleBuilder {
     const queue: { dir: string; depth: number }[] = [{ dir: rootDir, depth: 0 }];
     const visited = new Set<string>([dedupeKey(rootDir)]);
     let collected = 0;
+    // Tokens of files collected by this walk but not yet registered — the
+    // budget meter only sees registered files, so the walk adds its own.
+    let pendingTokens = 0;
     while (queue.length > 0) {
       const current = queue.shift();
       if (current === undefined) break;
@@ -423,6 +438,12 @@ export class BundleBuilder {
           this.recordSkip(rootDir, 'limit-reached', ctx);
           return;
         }
+        if (this.overTokenBudget(ctx, pendingTokens)) {
+          // Budget spent mid-walk: stop expanding — everything behind this
+          // file is over budget too. One skip entry marks the cut-off.
+          this.recordSkip(abs, 'limit-reached', ctx);
+          return;
+        }
         // Count every file *encountered*, not just the ones that load —
         // otherwise a directory of 10k binary files never trips the cap.
         collected += 1;
@@ -434,6 +455,7 @@ export class BundleBuilder {
           true,
         );
         if (file !== undefined) {
+          pendingTokens += file.tokens;
           out.push(file);
         }
       }
@@ -445,6 +467,18 @@ export class BundleBuilder {
     if (ctx.filesByPath.has(key)) return;
     ctx.filesByPath.set(key, file);
     ctx.order.push(key);
+    ctx.spentTokens += file.tokens;
+  }
+
+  /**
+   * Whether the estimated-token budget (`maxTotalTokens` > 0) is already
+   * spent. `pending` carries tokens of files collected but not yet
+   * registered (a directory walk registers after it finishes). `0` budgets
+   * and unset options leave the gate permanently open — no behavior change.
+   */
+  private overTokenBudget(ctx: BuildContext, pending = 0): boolean {
+    const budget = ctx.options.maxTotalTokens;
+    return budget !== undefined && budget > 0 && ctx.spentTokens + pending >= budget;
   }
 
   private recordSkip(absolutePath: string, reason: SkipReason, ctx: BuildContext): void {
@@ -531,7 +565,7 @@ export class BundleBuilder {
         content: wf.outputContent,
         origin: wf.origin,
         chars: wf.outputContent.length,
-        estimatedTokens: estimateTokens(wf.outputContent),
+        estimatedTokens: wf.tokens,
       });
     }
     const totalChars = files.reduce((sum, f) => sum + f.chars, 0);
@@ -544,6 +578,9 @@ export class BundleBuilder {
       includeLineNumbers: options.includeLineNumbers,
       includeTree: options.includeTree,
       generator: `CodeSheaf v${CODESHEAF_VERSION}`,
+      ...(options.taskHeader !== undefined && options.taskHeader.length > 0
+        ? { taskHeader: options.taskHeader }
+        : {}),
       ...(options.includeSkippedSection ? { skipped: ctx.skipped } : {}),
     });
     return {

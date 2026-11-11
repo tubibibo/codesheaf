@@ -1,4 +1,5 @@
 import type {
+  BundleFormat,
   BundleOptions,
   BundledFile,
   ContextBundle,
@@ -22,6 +23,8 @@ export interface CopyUseCaseDeps {
 export interface CopyOverrides {
   /** Ensure the import closure is followed at least this deep (used by the "+ imports" command). */
   readonly ensureImportDepth?: number;
+  /** Render this bundle in a specific format instead of the configured one (choose-format command). */
+  readonly format?: BundleFormat;
 }
 
 export interface CopyResult {
@@ -104,8 +107,19 @@ export async function copyAsContext(
 
 /** Merges configured options with per-command overrides. */
 export function resolveOptions(base: BundleOptions, overrides: CopyOverrides): BundleOptions {
-  if (overrides.ensureImportDepth === undefined) return base;
-  return { ...base, maxImportDepth: Math.max(base.maxImportDepth, overrides.ensureImportDepth) };
+  let options = base;
+  if (overrides.ensureImportDepth !== undefined) {
+    options = {
+      ...options,
+      maxImportDepth: Math.max(options.maxImportDepth, overrides.ensureImportDepth),
+    };
+  }
+  if (overrides.format !== undefined) {
+    // Only a validated enum member reaches here (the command handler picks
+    // from a fixed list); the override wins over `codesheaf.format`.
+    options = { ...options, format: overrides.format };
+  }
+  return options;
 }
 
 /** How many skip entries are spelled out before the log switches to a count. */

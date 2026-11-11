@@ -96,6 +96,20 @@ export interface BundleOptions {
    * `undefined` behaves like `true`.
    */
   readonly resolveAliases?: boolean;
+  /**
+   * Estimated total token budget (the ADR-0004 heuristic). Once the running
+   * estimate reaches it, further *discovered* files — directory expansion
+   * and the import closure, in breadth-first admission order — are skipped
+   * with the `limit-reached` reason. Explicit picks are never withheld.
+   * `0` (or `undefined`) disables the budget.
+   */
+  readonly maxTotalTokens?: number;
+  /**
+   * Optional task reminder rendered after the title line, before the file
+   * tree (markdown quote block, XML `<task>`, plain `TASK:` section).
+   * Empty string renders nothing.
+   */
+  readonly taskHeader?: string;
 }
 
 /** Glob patterns always excluded, before any user patterns (see {@link resolveExcludePatterns}). */
@@ -136,6 +150,8 @@ export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
   includeSkippedSection: false,
   secretScan: 'warn',
   resolveAliases: true,
+  maxTotalTokens: 0,
+  taskHeader: '',
 };
 
 /**

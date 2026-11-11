@@ -34,17 +34,41 @@ export const events = {
   selection: event<unknown>(),
   document: event<{ document: unknown }>(),
 };
+
+/**
+ * Minimal Uri stand-in: the handlers only ever touch `fsPath` and do
+ * `instanceof` checks, so a tagged class is enough.
+ */
+export class Uri {
+  constructor(readonly fsPath: string) {}
+  static file(fsPath: string): Uri {
+    return new Uri(fsPath);
+  }
+}
+
+export const FileType = { File: 1, Directory: 2 } as const;
 export const state = {
   enabled: true,
   items: [] as TrackedDisposable[],
   /** Settings overrides keyed by `section.key` (e.g. `codesheaf.format`). */
   settings: new Map<string, unknown>(),
+  /**
+   * What the next `showQuickPick` resolves with; `undefined` (the default)
+   * models a dismissed pick (Esc), like the real API.
+   */
+  quickPickChoice: undefined as string | undefined,
+  /** Paths that `workspace.fs.stat` reports as directories (Explorer fixtures). */
+  directories: new Set<string>(),
 };
 const document = { getText: () => 'const value = 1;' };
 export const window = {
   activeTextEditor: { document, selection: { isEmpty: true } },
   onDidChangeActiveTextEditor: events.editor.subscribe,
   onDidChangeTextEditorSelection: events.selection.subscribe,
+  async showQuickPick(items: readonly string[]): Promise<string | undefined> {
+    const choice = state.quickPickChoice;
+    return choice !== undefined && items.includes(choice) ? choice : undefined;
+  },
   createStatusBarItem() {
     const item = {
       disposeCalls: 0,
@@ -69,6 +93,12 @@ export const workspace = {
       return fallback;
     },
   }),
+  /** Explorer-command fixtures: paths in `state.directories` stat as directories. */
+  fs: {
+    async stat(uri: { fsPath: string }): Promise<{ type: number }> {
+      return { type: state.directories.has(uri.fsPath) ? FileType.Directory : FileType.File };
+    },
+  },
   onDidChangeConfiguration: events.configuration.subscribe,
   onDidChangeTextDocument: events.document.subscribe,
 };
@@ -90,5 +120,7 @@ export function reset(): void {
   state.enabled = true;
   state.items.length = 0;
   state.settings.clear();
+  state.quickPickChoice = undefined;
+  state.directories.clear();
   for (const event of Object.values(events)) event.listeners.clear();
 }

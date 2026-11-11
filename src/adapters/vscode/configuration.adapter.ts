@@ -13,6 +13,9 @@ export class VsCodeConfiguration implements ConfigPort {
     const config = vscode.workspace.getConfiguration('codesheaf');
     const format = config.get<BundleFormat>('format', 'markdown');
     const secretScan = config.get<SecretScanMode>('secretScan', 'warn');
+    // A mistyped taskHeader (number, array, object) must not reach the
+    // renderer mid-build: only real strings pass through.
+    const taskHeader = config.get<unknown>('taskHeader', '');
     return {
       format: FORMATS.includes(format) ? format : 'markdown',
       // Mistyped settings must not poison any option class: numbers used to
@@ -33,6 +36,10 @@ export class VsCodeConfiguration implements ConfigPort {
       // Manifest key is `codesheaf.resolveTsconfigAliases`; the option keeps
       // the shorter builder-facing name.
       resolveAliases: asBoolean(config.get<boolean>('resolveTsconfigAliases', true), true),
+      // 0 means "no budget": mistyped values fall back to disabled, never to
+      // a surprise truncation.
+      maxTotalTokens: clampInt(config.get<number>('maxTotalTokens', 0), 0, 0),
+      taskHeader: typeof taskHeader === 'string' ? taskHeader : '',
     };
   }
 

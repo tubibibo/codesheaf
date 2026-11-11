@@ -89,13 +89,15 @@ cd codesheaf && npm install
 
 Full command and settings reference: [docs/user-guide.md](docs/user-guide.md).
 
-| Command                                  | Does                                                                 |
-| ---------------------------------------- | -------------------------------------------------------------------- |
-| `Copy Active File as Context`            | Active file (+ imports per settings).                                |
-| `Copy Active File + Import Dependencies` | Guarantees import depth ≥ 3.                                         |
-| `Copy Selection as Context`              | Just the selected lines (imports still resolved from the full file). |
-| `Preview Context Bundle (Active File)`   | Opens the bundle in a separate editor tab (no clipboard write).      |
-| `Copy as LLM Context`                    | Explorer multi-select; folders expand, ignore-pruned.                |
+| Command                                       | Does                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------- |
+| `Copy Active File as Context`                 | Active file (+ imports per settings).                                |
+| `Copy Active File + Import Dependencies`      | Guarantees import depth ≥ 3.                                         |
+| `Copy Selection as Context`                   | Just the selected lines (imports still resolved from the full file). |
+| `Preview Context Bundle (Active File)`        | Opens the bundle in a separate editor tab (no clipboard write).      |
+| `Copy as LLM Context`                         | Explorer multi-select; folders expand, ignore-pruned.                |
+| `Preview Context Bundle (Explorer Selection)` | Same Explorer inputs, opened as a review tab instead of copied.      |
+| `Copy as Context (Choose Format)…`            | Pick markdown / XML / plain for this one copy.                       |
 
 ## ⚙️ Settings (highlights)
 
@@ -104,6 +106,8 @@ Full command and settings reference: [docs/user-guide.md](docs/user-guide.md).
 | `codesheaf.format`            | `markdown` (`xml`, `plain` also available) |
 | `codesheaf.maxImportDepth`    | `3` (0 disables import following)          |
 | `codesheaf.maxFileSizeKB`     | `256`                                      |
+| `codesheaf.maxTotalTokens`    | `0` (no estimated-token budget)            |
+| `codesheaf.taskHeader`        | `""` (no task reminder woven in)           |
 | `codesheaf.respectGitignore`  | `true`                                     |
 | `codesheaf.exclude`           | build/lockfile globs                       |
 | `codesheaf.statusBar.enabled` | `true`                                     |

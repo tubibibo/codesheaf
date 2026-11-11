@@ -58,13 +58,15 @@ cd codesheaf && npm install
 
 完整命令与设置说明见 [docs/user-guide.md](docs/user-guide.md)。
 
-| 命令                                     | 作用                                         |
-| ---------------------------------------- | -------------------------------------------- |
-| `Copy Active File as Context`            | 打包活动文件（按设置跟随导入）。             |
-| `Copy Active File + Import Dependencies` | 保证导入深度 ≥ 3。                           |
-| `Copy Selection as Context`              | 只打包选中行（导入仍按整个文件解析）。       |
-| `Preview Context Bundle (Active File)`   | 在编辑器标签页预览，不进剪贴板。             |
-| `Copy as LLM Context`                    | 资源管理器多选；文件夹展开并按忽略规则裁剪。 |
+| 命令                                          | 作用                                         |
+| --------------------------------------------- | -------------------------------------------- |
+| `Copy Active File as Context`                 | 打包活动文件（按设置跟随导入）。             |
+| `Copy Active File + Import Dependencies`      | 保证导入深度 ≥ 3。                           |
+| `Copy Selection as Context`                   | 只打包选中行（导入仍按整个文件解析）。       |
+| `Preview Context Bundle (Active File)`        | 在编辑器标签页预览，不进剪贴板。             |
+| `Copy as LLM Context`                         | 资源管理器多选；文件夹展开并按忽略规则裁剪。 |
+| `Preview Context Bundle (Explorer Selection)` | 同样的资源管理器选择，改为打开预览标签页。   |
+| `Copy as Context (Choose Format)…`            | 本次复制时临时选择 markdown / XML / 纯文本。 |
 
 ## ⚙️ 设置（节选）
 
@@ -73,6 +75,8 @@ cd codesheaf && npm install
 | `codesheaf.format`            | `markdown`（另有 `xml`、`plain`） |
 | `codesheaf.maxImportDepth`    | `3`（0 为关闭导入跟随）           |
 | `codesheaf.maxFileSizeKB`     | `256`                             |
+| `codesheaf.maxTotalTokens`    | `0`（不限制估算 token 预算）      |
+| `codesheaf.taskHeader`        | `""`（不渲染任务提示）            |
 | `codesheaf.respectGitignore`  | `true`                            |
 | `codesheaf.exclude`           | 构建/锁文件通配规则               |
 | `codesheaf.statusBar.enabled` | `true`                            |

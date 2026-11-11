@@ -61,6 +61,32 @@ describe('VsCodeConfiguration poisoning guards', () => {
     setSetting('codesheaf.secretScan', 42);
     expect(options().secretScan).toBe('warn');
   });
+
+  it('guards the alias kill switch like every boolean', () => {
+    expect(options().resolveAliases).toBe(true); // documented default
+    setSetting('codesheaf.resolveTsconfigAliases', false);
+    expect(options().resolveAliases).toBe(false);
+    setSetting('codesheaf.resolveTsconfigAliases', 'no');
+    expect(options().resolveAliases).toBe(true);
+  });
+
+  it('treats mistyped or negative token budgets as no budget (0)', () => {
+    expect(options().maxTotalTokens).toBe(0);
+    setSetting('codesheaf.maxTotalTokens', '2000');
+    expect(options().maxTotalTokens).toBe(0);
+    setSetting('codesheaf.maxTotalTokens', -5);
+    expect(options().maxTotalTokens).toBe(0);
+    setSetting('codesheaf.maxTotalTokens', 1234.9);
+    expect(options().maxTotalTokens).toBe(1234);
+  });
+
+  it('passes only real strings through as the task header', () => {
+    expect(options().taskHeader).toBe('');
+    setSetting('codesheaf.taskHeader', 'Review carefully');
+    expect(options().taskHeader).toBe('Review carefully');
+    setSetting('codesheaf.taskHeader', 42);
+    expect(options().taskHeader).toBe('');
+  });
 });
 
 describe('VsCodeConfiguration.isStatusBarEnabled', () => {

@@ -4,7 +4,9 @@ import {
   copyActiveFileWithImports,
   copyFromExplorer,
   copySelection,
+  copyWithFormat,
   previewActiveFile,
+  previewFromExplorer,
   type AppContainer,
 } from './handlers';
 
@@ -20,6 +22,14 @@ export function registerAllCommands(container: AppContainer): readonly vscode.Di
     vscode.commands.registerCommand(
       'codesheaf.copyFiles',
       (...args: unknown[]) => void copyFromExplorer(container, args),
+    ),
+    vscode.commands.registerCommand(
+      'codesheaf.previewFiles',
+      (...args: unknown[]) => void previewFromExplorer(container, args),
+    ),
+    vscode.commands.registerCommand(
+      'codesheaf.copyWithFormat',
+      () => void copyWithFormat(container),
     ),
   ];
 }

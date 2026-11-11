@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { InputRef } from '../../core/domain/bundle';
+import type { BundleFormat, InputRef } from '../../core/domain/bundle';
 import {
   copyAsContext,
   previewAsContext,
@@ -113,16 +113,39 @@ export async function copyFromExplorer(
   deps: AppContainer,
   args: readonly unknown[],
 ): Promise<void> {
+  const refs = await explorerRefs(deps, args);
+  if (refs === undefined) return;
+  void copyAsContext(deps, refs);
+}
+
+/**
+ * Command: preview the bundle for the Explorer selection in a separate tab —
+ * the same inputs as {@link copyFromExplorer}, routed to the review surface.
+ */
+export async function previewFromExplorer(
+  deps: AppContainer,
+  args: readonly unknown[],
+): Promise<void> {
+  const refs = await explorerRefs(deps, args);
+  if (refs === undefined) return;
+  void previewAsContext(deps, refs);
+}
+
+/** Shared Explorer plumbing: collect URIs, warn when none, map to input refs. */
+async function explorerRefs(
+  deps: AppContainer,
+  args: readonly unknown[],
+): Promise<InputRef[] | undefined> {
   const uris = collectUris(args);
   if (uris.length === 0) {
     deps.notifier.showWarning('CodeSheaf: select at least one file or folder in the Explorer.');
-    return;
+    return undefined;
   }
   const refs: InputRef[] = [];
   for (const uri of uris) {
     refs.push(await toInputRef(uri));
   }
-  void copyAsContext(deps, refs);
+  return refs;
 }
 
 function collectUris(args: readonly unknown[]): vscode.Uri[] {
@@ -150,4 +173,31 @@ async function toInputRef(uri: vscode.Uri): Promise<InputRef> {
   // An explicitly picked file is an explicit pick: it bypasses ignore rules,
   // exactly like the editor commands (README: "explicit picks always win").
   return { kind: 'file', absolutePath: uri.fsPath };
+}
+
+/** The choose-format QuickPick: fixed list, so the enum stays validated here. */
+const FORMAT_CHOICES: readonly { readonly label: string; readonly format: BundleFormat }[] = [
+  { label: 'Markdown', format: 'markdown' },
+  { label: 'XML', format: 'xml' },
+  { label: 'Plain text', format: 'plain' },
+];
+
+/**
+ * Command: copy the active file after picking the format interactively —
+ * the one-off "send it as XML just this time" path. Esc/cancel changes
+ * nothing (no use case is invoked at all).
+ */
+export async function copyWithFormat(deps: AppContainer): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined) {
+    deps.notifier.showWarning('CodeSheaf: open a file first.');
+    return;
+  }
+  const picked = await vscode.window.showQuickPick(
+    FORMAT_CHOICES.map((choice) => choice.label),
+    { placeHolder: 'CodeSheaf: copy the active file as which format?' },
+  );
+  const chosen = FORMAT_CHOICES.find((choice) => choice.label === picked);
+  if (chosen === undefined) return; // dismissed (Esc) — do nothing
+  void copyAsContext(deps, [activeDocumentRef(editor)], { format: chosen.format });
 }

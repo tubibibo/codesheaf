@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Optional estimated-token budget (`codesheaf.maxTotalTokens`, default `0` =
+  unlimited): once the running estimate reaches the budget, further
+  discovered files — directory expansion and the import closure, in
+  breadth-first admission order — are skipped as `limit-reached`. Explicit
+  picks are never withheld.
+- Optional task reminder (`codesheaf.taskHeader`, default empty) rendered
+  after the title line in every format: a markdown quote block, an XML
+  `<task>` element, or a plain `TASK:` block.
+- `Preview Context Bundle (Explorer Selection)`: the same Explorer
+  multi-select inputs as _Copy as LLM Context_, opened as a preview tab
+  instead of copied.
+- `Copy as Context (Choose Format)…`: a QuickPick of markdown / XML / plain
+  overrides the configured format for a single copy; Esc cancels.
 - tsconfig path aliases are resolved when following TypeScript/JavaScript
   imports: each workspace root's own `tsconfig.json` (`paths` + `baseUrl`,
   literal and single-star patterns) now maps `@/…`- and `~/…`-style

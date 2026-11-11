@@ -65,6 +65,16 @@
         "command": "codesheaf.copyFiles",
         "title": "Copy as LLM Context",
         "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.previewFiles",
+        "title": "Preview Context Bundle (Explorer Selection)",
+        "category": "CodeSheaf"
+      },
+      {
+        "command": "codesheaf.copyWithFormat",
+        "title": "Copy as Context (Choose Format)…",
+        "category": "CodeSheaf"
       }
     ],
     "menus": {
@@ -88,6 +98,11 @@
       "explorer/context": [
         {
           "command": "codesheaf.copyFiles",
+          "when": "explorerResourceIsFolder || resourceScheme == file",
+          "group": "9_codesheaf"
+        },
+        {
+          "command": "codesheaf.previewFiles",
           "when": "explorerResourceIsFolder || resourceScheme == file",
           "group": "9_codesheaf"
         }
@@ -177,6 +192,17 @@
           "type": "boolean",
           "default": true,
           "description": "Show the live token estimate in the status bar."
+        },
+        "codesheaf.maxTotalTokens": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Estimated total token budget for a bundle. Once the running estimate reaches it, no further discovered files are included (breadth-first admission order: directory expansion and import closure; explicitly picked files are never withheld). 0 disables the budget."
+        },
+        "codesheaf.taskHeader": {
+          "type": "string",
+          "default": "",
+          "description": "Optional task reminder woven after the title line and before the file tree (markdown quote block, XML <task>, plain TASK: section). Leave empty to render nothing."
         }
       }
     }

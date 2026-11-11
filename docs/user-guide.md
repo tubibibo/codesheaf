@@ -12,13 +12,15 @@
 
 ## Commands
 
-| Command                                             | What it does                                                                                                                                               |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CodeSheaf: Copy Active File as Context`            | Weaves the active file (+ imports per your configured depth) into the clipboard.                                                                           |
-| `CodeSheaf: Copy Active File + Import Dependencies` | Same, but guarantees the import closure is followed to depth ≥ 3, regardless of the `0` setting.                                                           |
-| `CodeSheaf: Copy Selection as Context`              | Weaves only the selected lines (1-based inclusive range) — imports are still scanned from the full file, so a deep selection still pulls its dependencies. |
-| `CodeSheaf: Preview Context Bundle (Active File)`   | Opens the exact bundle text in a separate editor tab instead of the clipboard — inspect before you paste.                                                  |
-| `CodeSheaf: Copy as LLM Context`                    | Right-click one or more files/folders in the Explorer. Folders expand into files (ignore-pruned, capped at 1000 files).                                    |
+| Command                                                  | What it does                                                                                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CodeSheaf: Copy Active File as Context`                 | Weaves the active file (+ imports per your configured depth) into the clipboard.                                                                           |
+| `CodeSheaf: Copy Active File + Import Dependencies`      | Same, but guarantees the import closure is followed to depth ≥ 3, regardless of the `0` setting.                                                           |
+| `CodeSheaf: Copy Selection as Context`                   | Weaves only the selected lines (1-based inclusive range) — imports are still scanned from the full file, so a deep selection still pulls its dependencies. |
+| `CodeSheaf: Preview Context Bundle (Active File)`        | Opens the exact bundle text in a separate editor tab instead of the clipboard — inspect before you paste.                                                  |
+| `CodeSheaf: Copy as LLM Context`                         | Right-click one or more files/folders in the Explorer. Folders expand into files (ignore-pruned, capped at 1000 files).                                    |
+| `CodeSheaf: Preview Context Bundle (Explorer Selection)` | The same Explorer inputs, opened as a preview tab — review a large folder pick before anything is copied.                                                  |
+| `CodeSheaf: Copy as Context (Choose Format)…`            | Copies the active file after a QuickPick of markdown / XML / plain — a one-off override that leaves `codesheaf.format` untouched. Esc cancels.             |
 
 The Editor context menu shows _Copy Selection as Context_ when text is
 selected, and _Copy Active File_ / _Copy Active File + Import Dependencies_
@@ -67,6 +69,11 @@ export const a = new Bundle();
 
 **Plain** — maximum compatibility: `FILE: path (language)` headers between
 separator lines.
+
+Every format can carry an optional task reminder (`codesheaf.taskHeader`),
+rendered right after the title: a markdown quote block, an XML `<task>`
+element (CDATA-escaped), or a `TASK:` block inside the plain title section.
+An empty value renders nothing.
 
 ## How file picking works
 
@@ -173,11 +180,27 @@ false positives. The escape hatch for false positives is one click —
 | `codesheaf.includeTree`            | `true`               | File tree at the top of the bundle.                              |
 | `codesheaf.maxImportDepth`         | `3`                  | 0–10; 0 disables import following.                               |
 | `codesheaf.maxFileSizeKB`          | `256`                | Files above this size are skipped.                               |
+| `codesheaf.maxTotalTokens`         | `0`                  | Estimated-token budget; 0 disables. See the note below.          |
+| `codesheaf.taskHeader`             | `""`                 | Task reminder woven after the title line; empty renders nothing. |
 | `codesheaf.respectGitignore`       | `true`               | Honor workspace `.gitignore` files.                              |
 | `codesheaf.exclude`                | build/lockfile globs | Extra gitignore-syntax patterns.                                 |
 | `codesheaf.secretScan`             | `warn`               | Ask before copying a bundle with likely secrets; `off` disables. |
 | `codesheaf.resolveTsconfigAliases` | `true`               | Resolve `@/…`-style imports via each root's `tsconfig.json`.     |
 | `codesheaf.statusBar.enabled`      | `true`               | Live token meter in the status bar.                              |
+
+### Token budget semantics
+
+`codesheaf.maxTotalTokens` caps a bundle by its running **estimate** (the
+ADR-0004 heuristic, not a tokenizer). Once the estimate reaches the budget,
+no further _discovered_ files are included — directory expansion and the
+import closure are both gated, in **breadth-first admission order**, and
+each withheld file is reported as a `limit-reached` skip (visible in the
+preview's _Skipped Files_ section and the output channel). Two deliberate
+edges: the file that crosses the budget is still woven (the check runs
+before admission, so the bundle always makes progress), and **explicitly
+picked files are never withheld** — the budget steers what CodeSheaf
+discovers, not what you asked for by name. `0` (the default) disables the
+budget entirely.
 
 ## Known limitations
 

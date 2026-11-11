@@ -18,6 +18,8 @@ const commands = [
   'codesheaf.copySelection',
   'codesheaf.previewBundle',
   'codesheaf.copyFiles',
+  'codesheaf.previewFiles',
+  'codesheaf.copyWithFormat',
 ];
 
 const stubSource = String.raw`
@@ -36,7 +38,7 @@ function event() {
   };
 }
 const events = { configuration: event(), editor: event(), selection: event(), document: event() };
-const record = { commands: new Map(), channels: [], items: [], clipboard: [], previews: [], warnings: [], errors: [] };
+const record = { commands: new Map(), channels: [], items: [], clipboard: [], previews: [], quickPicks: [], warnings: [], errors: [] };
 class Uri {
   constructor(fsPath) { this.fsPath = path.resolve(fsPath); this.scheme = 'file'; }
   static file(value) { return new Uri(value); }
@@ -71,6 +73,7 @@ const api = {
     },
     onDidChangeActiveTextEditor: events.editor.subscribe,
     onDidChangeTextEditorSelection: events.selection.subscribe,
+    async showQuickPick(items) { const choice = items[0]; record.quickPicks.push(choice); return choice; },
     showInformationMessage() {},
     showWarningMessage(message) { record.warnings.push(message); },
     showErrorMessage(message) { record.errors.push(message); },
@@ -164,6 +167,17 @@ async function main() {
   await waitFor(() => vscode.record.clipboard.length === 4, 'copyFiles');
   assert.ok(vscode.record.clipboard[3].includes('from-dependency'));
   assert.ok(!vscode.record.clipboard[3].includes('unsaved'));
+
+  invoke('codesheaf.previewFiles', [vscode.Uri.file(path.join(fixtureRoot, 'helper.ts'))]);
+  await waitFor(() => vscode.record.previews.length === 2, 'previewFiles');
+  assert.equal(vscode.record.previews[1].languageId, 'markdown');
+  assert.ok(vscode.record.previews[1].content.includes('from-dependency'));
+
+  invoke('codesheaf.copyWithFormat');
+  await waitFor(() => vscode.record.clipboard.length === 5, 'copyWithFormat');
+  assert.deepEqual(vscode.record.quickPicks, ['Markdown']);
+  assert.ok(vscode.record.clipboard[4].includes('unsaved'));
+  assert.ok(vscode.record.clipboard[4].includes('# CodeSheaf Context Bundle'));
   assert.deepEqual(vscode.record.errors, []);
 
   extension.deactivate();
@@ -198,12 +212,12 @@ function main() {
     if (result.error) throw result.error;
     assert.equal(result.status, 0, 'Headless smoke failed:\n' + result.stdout + result.stderr);
     const report = JSON.parse(result.stdout.trim());
-    assert.equal(report.commandCount, 5);
-    assert.equal(report.clipboardWrites, 4);
-    assert.equal(report.previewCount, 1);
+    assert.equal(report.commandCount, 7);
+    assert.equal(report.clipboardWrites, 5);
+    assert.equal(report.previewCount, 2);
     assert.equal(report.disposed, true);
     console.log(
-      'HEADLESS SMOKE OK - 5 commands registered and exercised, 4 clipboard writes, 1 preview, all context resources disposed.',
+      'HEADLESS SMOKE OK - 7 commands registered and exercised, 5 clipboard writes, 2 previews, all context resources disposed.',
     );
     console.log(
       'This uses a vscode stub in Node; a real VS Code extension-host acceptance run remains separate.',
