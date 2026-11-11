@@ -37,5 +37,10 @@ comment-stripped, string-aware source text (see `stripCStyleComments` /
   stripped by the C-style stripper, so an import written inside one could
   be scanned. Accepted for now — removing it requires passing the language
   id into every strategy and a second stripper, for a rare failure mode.
+- Update (ADR-0009): the "only relative specifiers are followed" decision
+  above is refined — tsconfig `paths`/`baseUrl` aliases (literal and
+  single-star patterns, each workspace root's own tsconfig only, no
+  `extends` chain) now resolve through `matchAlias`. Bare package names and
+  URLs remain skipped exactly as before.
 - Import scans use the **full file content**, not the selection slice, so a
   deep selection still pulls its dependencies.

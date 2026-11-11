@@ -168,6 +168,11 @@
           ],
           "description": "Scan bundles for likely credentials before they leave the machine. `warn` scans at copy time and shows a confirmation dialog listing what was found (choose Copy anyway to proceed); `off` disables scanning entirely. This is a conservative heuristic — it can miss secrets and can raise false positives — not a replacement for a dedicated scanner."
         },
+        "codesheaf.resolveTsconfigAliases": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read each workspace root's tsconfig.json paths/baseUrl (literal and single-star patterns) when following TypeScript/JavaScript imports. The extends chain is not followed; unmatched or unreadable tsconfigs keep the old skip behavior."
+        },
         "codesheaf.statusBar.enabled": {
           "type": "boolean",
           "default": true,

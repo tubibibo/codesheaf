@@ -18,8 +18,14 @@ export { IgnoreMatcher } from './services/ignore/gitignore-matcher';
 export {
   ImportScannerService,
   type ImportLanguageStrategy,
+  type ImportScanContext,
   type ImportScanInput,
   type ResolvedCandidate,
 } from './services/scan/import-scanner';
+export {
+  matchAlias,
+  parseTsconfigAliases,
+  type TsconfigAliasMap,
+} from './services/scan/tsconfig-aliases';
 export { BUILT_IN_STRATEGIES } from './services/scan/strategies';
 export * from './utils';

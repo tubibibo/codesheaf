@@ -5,11 +5,23 @@
  * file-system port (that is what keeps external packages out for free).
  */
 
+import type { TsconfigAliasMap } from './tsconfig-aliases';
+
 export interface ResolvedCandidate {
   /** `absolute`: ready to probe. `root-relative`: probe against each workspace root. */
   readonly kind: 'absolute' | 'root-relative';
   /** Absolute path, or workspace-root-relative POSIX path. */
   readonly path: string;
+}
+
+/** Optional per-file context handed to strategies that can use it. */
+export interface ImportScanContext {
+  /**
+   * tsconfig `paths` aliases of the file's workspace root (ADR-0009).
+   * `undefined` — no workspace root, unreadable tsconfig, or the feature
+   * switched off — keeps the pre-alias behavior (only relative specifiers).
+   */
+  readonly aliases?: TsconfigAliasMap;
 }
 
 export interface ImportLanguageStrategy {
@@ -18,7 +30,11 @@ export interface ImportLanguageStrategy {
   readonly languageIds: readonly string[];
   /** File extensions used as a fallback claim (when the language id is unknown). */
   readonly extensions: readonly string[];
-  extractImports(source: string, importerAbsolutePath: string): readonly ResolvedCandidate[];
+  extractImports(
+    source: string,
+    importerAbsolutePath: string,
+    context?: ImportScanContext,
+  ): readonly ResolvedCandidate[];
 }
 
 export interface ImportScanInput {
@@ -39,8 +55,11 @@ export class ImportScannerService {
     );
   }
 
-  collectCandidates(input: ImportScanInput): readonly ResolvedCandidate[] {
+  collectCandidates(
+    input: ImportScanInput,
+    context?: ImportScanContext,
+  ): readonly ResolvedCandidate[] {
     const strategy = this.strategyFor(input.languageId, input.absolutePath);
-    return strategy ? strategy.extractImports(input.content, input.absolutePath) : [];
+    return strategy ? strategy.extractImports(input.content, input.absolutePath, context) : [];
   }
 }

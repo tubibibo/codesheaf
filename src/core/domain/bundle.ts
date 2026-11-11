@@ -89,6 +89,13 @@ export interface BundleOptions {
    * write; previews stay non-blocking and only surface a warning.
    */
   readonly secretScan: SecretScanMode;
+  /**
+   * Whether tsconfig `paths`/`baseUrl` aliases are resolved when following
+   * TypeScript/JavaScript imports: each workspace root's own tsconfig.json,
+   * literal and single-star patterns, no `extends` chain (ADR-0009).
+   * `undefined` behaves like `true`.
+   */
+  readonly resolveAliases?: boolean;
 }
 
 /** Glob patterns always excluded, before any user patterns (see {@link resolveExcludePatterns}). */
@@ -128,6 +135,7 @@ export const DEFAULT_BUNDLE_OPTIONS: BundleOptions = {
   exclude: DEFAULT_EXCLUDES,
   includeSkippedSection: false,
   secretScan: 'warn',
+  resolveAliases: true,
 };
 
 /**

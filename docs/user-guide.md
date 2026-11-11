@@ -94,21 +94,38 @@ separator lines.
 Depth is controlled by `codesheaf.maxImportDepth` (default 3, `0` disables).
 Only **local** dependencies are followed:
 
-| Language                | Followed                                                                                           | Skipped                                              |
-| ----------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| TypeScript / JavaScript | `./`, `../` imports, re-exports, `require()`, dynamic `import()`                                   | bare packages (`react`), URLs, `@/` and `~/` aliases |
-| Python                  | `from .x import`, `from ..pkg import`, absolute `import pkg.mod` (matched against workspace files) | stdlib/third-party that never matches a real file    |
-| Java                    | `import com.x.Y;` → `com/x/Y.java`, static imports → declaring class                               | wildcards `com.x.*`                                  |
-| Go                      | block + single imports; relative specifiers                                                        | stdlib names that match no file                      |
-| C/C++                   | quoted `#include "..."`                                                                            | system `<...>` includes                              |
+| Language                | Followed                                                                                           | Skipped                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| TypeScript / JavaScript | `./`, `../` imports, re-exports, `require()`, dynamic `import()`, tsconfig `paths` aliases         | bare packages (`react`), URLs, unmatched aliases  |
+| Python                  | `from .x import`, `from ..pkg import`, absolute `import pkg.mod` (matched against workspace files) | stdlib/third-party that never matches a real file |
+| Java                    | `import com.x.Y;` → `com/x/Y.java`, static imports → declaring class                               | wildcards `com.x.*`                               |
+| Go                      | block + single imports; relative specifiers                                                        | stdlib names that match no file                   |
+| C/C++                   | quoted `#include "..."`                                                                            | system `<...>` includes                           |
 
-TypeScript/JavaScript scanning does not read `tsconfig.json` `paths` or
-`baseUrl`. Alias imports such as `@/components/button` and `~/utils` are
-skipped even when they refer to local files, so those dependencies will not
-be included automatically. Explicitly select the missing files in the
-Explorer to include them, then review the preview before sharing. This is
-a limitation of scanning the target project, not a requirement to change
-that project's imports or CodeSheaf's own build configuration.
+### tsconfig path aliases
+
+Alias imports such as `@/components/button` and `~/utils` are resolved
+through the **root `tsconfig.json` of each workspace folder** (`paths` +
+`baseUrl`, literal patterns like `@utils` and single-star patterns like
+`@/*`; the base directory is `baseUrl` when set, else the tsconfig's own
+directory — the TypeScript 4.1+ semantics). Limitations, stated plainly:
+
+- The `extends` chain and nested (per-directory) tsconfigs are **not**
+  followed — only each workspace root's own file. A project that centralizes
+  `paths` in a shared base tsconfig still misses those aliases; explicitly
+  select the missing files in the Explorer instead.
+- Single-file / untitled mode (no workspace folders) resolves no aliases.
+- Unmatched aliases and bare package names keep the old skip behavior, and
+  an unreadable or unparseable tsconfig silently falls back — never a failed
+  bundle.
+- Every alias-mapped candidate passes the same containment and ignore gates
+  as a relative import: a `paths` entry pointing outside the workspace is
+  rejected exactly like a crafted `../..` chain (see
+  [ADR-0009](adr/0009-tsconfig-path-aliases.md)).
+
+The feature is on by default; set `codesheaf.resolveTsconfigAliases` to
+`false` to switch it off (useful if a config's alias table produces noisy
+resolution misses).
 
 ## Secret scanning
 
@@ -149,17 +166,18 @@ false positives. The escape hatch for false positives is one click —
 
 ## Settings
 
-| Setting                        | Default              | Meaning                                                          |
-| ------------------------------ | -------------------- | ---------------------------------------------------------------- |
-| `codesheaf.format`             | `markdown`           | `markdown` · `xml` · `plain`                                     |
-| `codesheaf.includeLineNumbers` | `false`              | Prefix every line with a 1-based `N` marker.                     |
-| `codesheaf.includeTree`        | `true`               | File tree at the top of the bundle.                              |
-| `codesheaf.maxImportDepth`     | `3`                  | 0–10; 0 disables import following.                               |
-| `codesheaf.maxFileSizeKB`      | `256`                | Files above this size are skipped.                               |
-| `codesheaf.respectGitignore`   | `true`               | Honor workspace `.gitignore` files.                              |
-| `codesheaf.exclude`            | build/lockfile globs | Extra gitignore-syntax patterns.                                 |
-| `codesheaf.secretScan`         | `warn`               | Ask before copying a bundle with likely secrets; `off` disables. |
-| `codesheaf.statusBar.enabled`  | `true`               | Live token meter in the status bar.                              |
+| Setting                            | Default              | Meaning                                                          |
+| ---------------------------------- | -------------------- | ---------------------------------------------------------------- |
+| `codesheaf.format`                 | `markdown`           | `markdown` · `xml` · `plain`                                     |
+| `codesheaf.includeLineNumbers`     | `false`              | Prefix every line with a 1-based `N` marker.                     |
+| `codesheaf.includeTree`            | `true`               | File tree at the top of the bundle.                              |
+| `codesheaf.maxImportDepth`         | `3`                  | 0–10; 0 disables import following.                               |
+| `codesheaf.maxFileSizeKB`          | `256`                | Files above this size are skipped.                               |
+| `codesheaf.respectGitignore`       | `true`               | Honor workspace `.gitignore` files.                              |
+| `codesheaf.exclude`                | build/lockfile globs | Extra gitignore-syntax patterns.                                 |
+| `codesheaf.secretScan`             | `warn`               | Ask before copying a bundle with likely secrets; `off` disables. |
+| `codesheaf.resolveTsconfigAliases` | `true`               | Resolve `@/…`-style imports via each root's `tsconfig.json`.     |
+| `codesheaf.statusBar.enabled`      | `true`               | Live token meter in the status bar.                              |
 
 ## Known limitations
 

@@ -30,6 +30,9 @@ export class VsCodeConfiguration implements ConfigPort {
           .filter((pattern): pattern is string => typeof pattern === 'string'),
       ),
       secretScan: SECRET_SCAN_MODES.includes(secretScan) ? secretScan : 'warn',
+      // Manifest key is `codesheaf.resolveTsconfigAliases`; the option keeps
+      // the shorter builder-facing name.
+      resolveAliases: asBoolean(config.get<boolean>('resolveTsconfigAliases', true), true),
     };
   }
 

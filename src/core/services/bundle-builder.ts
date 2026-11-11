@@ -15,6 +15,7 @@ import { renderBundle } from './formatter';
 import { IgnoreMatcher } from './ignore/gitignore-matcher';
 import type { ResolvedCandidate } from './scan/import-scanner';
 import { ImportScannerService } from './scan/import-scanner';
+import { parseTsconfigAliases, type TsconfigAliasMap } from './scan/tsconfig-aliases';
 import { renderFileTree } from './tree-renderer';
 import { estimateTokens } from './token-estimator';
 import { compareNames, dedupeKey, hasDotDotSegment } from '../utils/paths';
@@ -59,6 +60,12 @@ interface BuildContext {
   readonly boundaryRoot: string | undefined;
   /** Cache canonical roots, including unresolved ones, for this build only. */
   readonly realPathByRoot: Map<string, Promise<string | undefined>>;
+  /**
+   * tsconfig alias table per workspace root (ADR-0009), lazily read once per
+   * build — the same promise-cache pattern as `realPathByRoot`, because the
+   * read is async while `collectCandidates` stays synchronous.
+   */
+  readonly aliasesByRoot: Map<string, Promise<TsconfigAliasMap | undefined>>;
   readonly maxBytes: number;
   readonly filesByPath: Map<string, WorkingFile>;
   readonly order: string[];
@@ -95,6 +102,7 @@ export class BundleBuilder {
         ),
       ),
       realPathByRoot: new Map(),
+      aliasesByRoot: new Map(),
       maxBytes: Math.max(1, Math.round(options.maxFileSizeKB * 1024)),
       filesByPath: new Map(),
       order: [],
@@ -129,7 +137,7 @@ export class BundleBuilder {
     // Record what the closure *would* have pulled in had the depth been larger.
     if (maxDepth > 0 && frontier.length > 0) {
       for (const file of frontier) {
-        for (const candidate of this.candidatesOf(file)) {
+        for (const candidate of await this.candidatesOf(file, ctx)) {
           const abs = await this.resolveCandidate(candidate, ctx);
           if (abs === undefined) continue;
           if (ctx.attempted.has(dedupeKey(abs))) continue;
@@ -148,7 +156,7 @@ export class BundleBuilder {
   ): Promise<WorkingFile[]> {
     const next: WorkingFile[] = [];
     for (const file of frontier) {
-      for (const candidate of this.candidatesOf(file)) {
+      for (const candidate of await this.candidatesOf(file, ctx)) {
         const abs = await this.resolveCandidate(candidate, ctx);
         if (abs === undefined) continue;
         const key = dedupeKey(abs);
@@ -170,15 +178,59 @@ export class BundleBuilder {
     return next;
   }
 
-  private candidatesOf(file: WorkingFile): readonly ResolvedCandidate[] {
+  private async candidatesOf(
+    file: WorkingFile,
+    ctx: BuildContext,
+  ): Promise<readonly ResolvedCandidate[]> {
     // Untitled / virtual documents have no real location; their imports
     // cannot resolve against anything meaningful (ADR-0006).
     if (!file.importsEnabled) return [];
-    return this.deps.scanner.collectCandidates({
-      languageId: file.languageId,
-      absolutePath: file.absolutePath,
-      content: file.fullContent,
-    });
+    return this.deps.scanner.collectCandidates(
+      {
+        languageId: file.languageId,
+        absolutePath: file.absolutePath,
+        content: file.fullContent,
+      },
+      { aliases: await this.aliasesFor(file.absolutePath, ctx) },
+    );
+  }
+
+  /**
+   * The tsconfig alias table of the root that contains the file, read
+   * lazily and cached for the whole build (ADR-0009). Files outside every
+   * root — single-file / untitled mode — resolve no aliases, and
+   * `resolveAliases: false` skips the reads entirely.
+   */
+  private async aliasesFor(
+    absolutePath: string,
+    ctx: BuildContext,
+  ): Promise<TsconfigAliasMap | undefined> {
+    if (ctx.options.resolveAliases === false) return undefined;
+    const root = this.deps.workspace.rootFor(absolutePath);
+    if (root === undefined) return undefined;
+    const key = dedupeKey(root);
+    let cached = ctx.aliasesByRoot.get(key);
+    if (cached === undefined) {
+      cached = this.loadAliases(root);
+      ctx.aliasesByRoot.set(key, cached);
+    }
+    return cached;
+  }
+
+  /** One `<root>/tsconfig.json` read per build; any failure keeps the old skip-the-alias behavior. */
+  private async loadAliases(root: string): Promise<TsconfigAliasMap | undefined> {
+    try {
+      // No meaningful size cap: a tsconfig.json is tiny, and capping it
+      // would silently disable aliases for a large-but-legitimate config.
+      const read = await this.deps.fs.readText(
+        nodePath.join(root, 'tsconfig.json'),
+        Number.MAX_SAFE_INTEGER,
+      );
+      if (!read.ok) return undefined;
+      return parseTsconfigAliases(read.content, root);
+    } catch {
+      return undefined;
+    }
   }
 
   private async resolveCandidate(

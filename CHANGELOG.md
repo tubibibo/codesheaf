@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- tsconfig path aliases are resolved when following TypeScript/JavaScript
+  imports: each workspace root's own `tsconfig.json` (`paths` + `baseUrl`,
+  literal and single-star patterns) now maps `@/…`- and `~/…`-style
+  specifiers onto local candidates, which still pass every containment and
+  ignore gate. The `extends` chain and nested tsconfigs are not followed,
+  single-file mode resolves no aliases, and an unreadable tsconfig silently
+  keeps the previous skip behavior. Switch it off with
+  `codesheaf.resolveTsconfigAliases`; see
+  [ADR-0009](docs/adr/0009-tsconfig-path-aliases.md).
 - Secret scanning before a bundle reaches the clipboard (`codesheaf.secretScan`,
   default `warn`): a conservative, zero-dependency scan for common credential
   patterns (AWS/GitHub/Slack/Google/OpenAI keys, private key blocks,

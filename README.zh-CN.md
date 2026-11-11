@@ -16,7 +16,7 @@ _Sheaf_（麦捆）即"把散落的秸秆捆成一束"。CodeSheaf 把你正在�
 
 ## ✨ 特性
 
-- 🎯 **导入感知打包**——按可配置深度跟随本地导入闭包（TypeScript/JavaScript、Python、Java、Go、C/C++）。TypeScript/JavaScript 仅跟随相对导入，不解析 `tsconfig` 的 `paths`/`baseUrl` 别名（如 `@/`、`~/`）；裸包名和 URL 会被跳过。
+- 🎯 **导入感知打包**——按可配置深度跟随本地导入闭包（TypeScript/JavaScript、Python、Java、Go、C/C++）。TypeScript/JavaScript 会通过各工作区根目录的 `tsconfig.json`（`paths`/`baseUrl`）解析 `@/`、`~/` 等别名导入（仅支持字面量与单星通配；不跟随 `extends` 链与嵌套 tsconfig，见 ADR-0009）；裸包名和 URL 会被跳过。
 - 📋 **一个命令搞定**——活动文件、当前选区、或资源管理器多选文件/文件夹（文件夹自动展开并按 gitignore 裁剪）。
 - 📊 **实时 token 表**——状态栏实时显示当前文件/选区的估算 token；每个打包结果也自带估算。
 - 📐 **三种输出格式**——Markdown（围栏代码块 + 文件树）、XML（CDATA 安全、属性转义）、纯文本。

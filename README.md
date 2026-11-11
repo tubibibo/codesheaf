@@ -24,9 +24,11 @@ exactly the local dependencies that matter."**
 
 - 🎯 **Import-aware bundling** — follows local import closures
   (TypeScript/JavaScript, Python, Java, Go, C/C++) to a configurable depth.
-  TypeScript/JavaScript following supports relative imports only; `tsconfig`
-  `paths`/`baseUrl` aliases such as `@/` and `~/` are not resolved.
-  Bare package names and URLs are skipped.
+  TypeScript/JavaScript following resolves `tsconfig` `paths`/`baseUrl`
+  aliases such as `@/` and `~/` from each workspace root's `tsconfig.json`
+  (literal and single-star patterns; the `extends` chain and nested
+  tsconfigs are not followed — see ADR-0009). Bare package names and URLs
+  are skipped.
 - 📋 **Everything is one command** — active file, current selection, or
   multi-select files/folders in the Explorer (folders expand with
   gitignore pruning).
