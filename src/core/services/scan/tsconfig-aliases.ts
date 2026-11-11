@@ -66,6 +66,11 @@ export function parseTsconfigAliases(
     const strings = targets.filter((target): target is string => typeof target === 'string');
     if (strings.length > 0) patterns.push({ pattern, targets: strings });
   }
+  // tsc resolves a specifier against `paths` by specificity, not declaration
+  // order: the pattern with the longest literal prefix before its `*` wins
+  // (TypeScript's comparePatternKeys). Mirror that with a stable sort so
+  // `@/special/*` beats `@/*` regardless of key order (review fix R3).
+  patterns.sort((a, b) => specificity(b.pattern) - specificity(a.pattern));
   const rawBaseUrl = (options as { baseUrl?: unknown }).baseUrl;
   const baseDir =
     typeof rawBaseUrl === 'string' && rawBaseUrl.length > 0
@@ -116,6 +121,16 @@ function resolveTargets(
     const expanded = target.includes('*') ? target.split('*').join(middle) : target;
     return nodePath.resolve(baseDir, expanded);
   });
+}
+
+/**
+ * Specificity of a `paths` key: exact keys are fully literal (their whole
+ * length counts); star keys compete on the literal prefix before the `*`.
+ * Array#sort is stable, so ties keep tsconfig declaration order.
+ */
+function specificity(pattern: string): number {
+  const star = pattern.indexOf('*');
+  return star === -1 ? pattern.length : star;
 }
 
 /** Drops a leading UTF-8 BOM so BOM-prefixed tsconfigs still parse. */

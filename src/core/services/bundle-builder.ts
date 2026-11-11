@@ -116,23 +116,30 @@ export class BundleBuilder {
       spentTokens: 0,
     };
 
-    // Level 0: explicit inputs, in the order given.
-    const explicit: WorkingFile[] = [];
+    // Level 0: explicit inputs, in the order given. Files register as soon
+    // as they load — the token budget is a single global meter, so a
+    // directory input's gate sees everything spent before it (review fix
+    // R2: per-input windows could each spend the full budget).
+    const registered: WorkingFile[] = [];
     for (const ref of inputs) {
       if (ref.kind === 'directory') {
-        await this.expandDirectory(ref.absolutePath, ctx, explicit);
+        await this.expandDirectory(ref.absolutePath, ctx, registered);
         continue;
       }
       const policy: IgnorePolicy =
         ref.kind === 'selection' ? 'bypass' : (ref.ignorePolicy ?? 'bypass');
+      // Directly named inputs pass no budget gate: explicit picks always
+      // win, exactly like ignore rules (documented budget semantics).
       const file = await this.loadFile(ref, policy, 'explicit', ctx);
-      if (file !== undefined) explicit.push(file);
+      if (file !== undefined) {
+        this.register(file, ctx);
+        registered.push(file);
+      }
     }
-    for (const file of explicit) this.register(file, ctx);
 
     // Breadth-first import closure.
     const maxDepth = Math.max(0, Math.floor(options.maxImportDepth));
-    let frontier: WorkingFile[] = [...explicit];
+    let frontier: WorkingFile[] = registered;
     for (let depth = 1; depth <= maxDepth; depth += 1) {
       const next = await this.expandImports(frontier, ctx);
       frontier = next;
@@ -401,9 +408,6 @@ export class BundleBuilder {
     const queue: { dir: string; depth: number }[] = [{ dir: rootDir, depth: 0 }];
     const visited = new Set<string>([dedupeKey(rootDir)]);
     let collected = 0;
-    // Tokens of files collected by this walk but not yet registered — the
-    // budget meter only sees registered files, so the walk adds its own.
-    let pendingTokens = 0;
     while (queue.length > 0) {
       const current = queue.shift();
       if (current === undefined) break;
@@ -438,7 +442,7 @@ export class BundleBuilder {
           this.recordSkip(rootDir, 'limit-reached', ctx);
           return;
         }
-        if (this.overTokenBudget(ctx, pendingTokens)) {
+        if (this.overTokenBudget(ctx)) {
           // Budget spent mid-walk: stop expanding — everything behind this
           // file is over budget too. One skip entry marks the cut-off.
           this.recordSkip(abs, 'limit-reached', ctx);
@@ -455,7 +459,7 @@ export class BundleBuilder {
           true,
         );
         if (file !== undefined) {
-          pendingTokens += file.tokens;
+          this.register(file, ctx);
           out.push(file);
         }
       }
@@ -472,13 +476,13 @@ export class BundleBuilder {
 
   /**
    * Whether the estimated-token budget (`maxTotalTokens` > 0) is already
-   * spent. `pending` carries tokens of files collected but not yet
-   * registered (a directory walk registers after it finishes). `0` budgets
-   * and unset options leave the gate permanently open — no behavior change.
+   * spent. Files register the moment they load, so `spentTokens` is the one
+   * global meter every gate consults. `0` budgets and unset options leave
+   * the gate permanently open — no behavior change.
    */
-  private overTokenBudget(ctx: BuildContext, pending = 0): boolean {
+  private overTokenBudget(ctx: BuildContext): boolean {
     const budget = ctx.options.maxTotalTokens;
-    return budget !== undefined && budget > 0 && ctx.spentTokens + pending >= budget;
+    return budget !== undefined && budget > 0 && ctx.spentTokens >= budget;
   }
 
   private recordSkip(absolutePath: string, reason: SkipReason, ctx: BuildContext): void {
@@ -571,6 +575,13 @@ export class BundleBuilder {
     const totalChars = files.reduce((sum, f) => sum + f.chars, 0);
     const estimatedTokens = files.reduce((sum, f) => sum + f.estimatedTokens, 0);
     const tree = renderFileTree(files.map((f) => f.path));
+    // The header is prose: normalize its line endings like file content and
+    // treat whitespace-only values as unset ("Leave empty" in the manifest
+    // covers a stray space, review fix F1/F2).
+    const taskHeader =
+      options.taskHeader === undefined || options.taskHeader.trim().length === 0
+        ? undefined
+        : normalizeNewlines(options.taskHeader);
     const rendered = renderBundle({
       files,
       tree,
@@ -578,9 +589,7 @@ export class BundleBuilder {
       includeLineNumbers: options.includeLineNumbers,
       includeTree: options.includeTree,
       generator: `CodeSheaf v${CODESHEAF_VERSION}`,
-      ...(options.taskHeader !== undefined && options.taskHeader.length > 0
-        ? { taskHeader: options.taskHeader }
-        : {}),
+      ...(taskHeader !== undefined ? { taskHeader } : {}),
       ...(options.includeSkippedSection ? { skipped: ctx.skipped } : {}),
     });
     return {

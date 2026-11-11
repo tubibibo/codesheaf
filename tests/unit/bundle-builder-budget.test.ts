@@ -103,4 +103,42 @@ describe('BundleBuilder token budget', () => {
     expect(bundle.files.map((f) => f.path)).toEqual(['main.ts', 'b.ts', 'c.ts']);
     expect(bundle.skipped).toHaveLength(0);
   });
+
+  it('uses one global meter: a second directory input cannot re-spend the budget', async () => {
+    // Review fix R2: the walk used to carry a per-input pending window, so
+    // each directory could spend the full budget independently (two dirs ×
+    // budget 50 wove 100 tokens). Files now register as they load.
+    const { builder } = makeBuilder({
+      [`${PROJECT_ROOT}/dirA/f1.ts`]: withTokens('export const a1 = 1;\n', 25),
+      [`${PROJECT_ROOT}/dirA/f2.ts`]: withTokens('export const a2 = 2;\n', 25),
+      [`${PROJECT_ROOT}/dirB/f1.ts`]: withTokens('export const b1 = 1;\n', 25),
+      [`${PROJECT_ROOT}/dirB/f2.ts`]: withTokens('export const b2 = 2;\n', 25),
+    });
+    const bundle = await builder.build(
+      [
+        { kind: 'directory', absolutePath: `${PROJECT_ROOT}/dirA` },
+        { kind: 'directory', absolutePath: `${PROJECT_ROOT}/dirB` },
+      ],
+      options({ maxTotalTokens: 50 }),
+    );
+    expect(bundle.files.map((f) => f.path)).toEqual(['dirA/f1.ts', 'dirA/f2.ts']);
+    expect(bundle.skipped).toEqual([{ path: 'dirB/f1.ts', reason: 'limit-reached' }]);
+    expect(bundle.estimatedTokens).toBe(50);
+  });
+
+  it('an explicit pick after a budgeted directory is still admitted', async () => {
+    const { builder } = makeBuilder({
+      [`${PROJECT_ROOT}/dir/f1.ts`]: withTokens('export const f1 = 1;\n', 25),
+      [`${PROJECT_ROOT}/dir/f2.ts`]: withTokens('export const f2 = 2;\n', 25),
+      [`${PROJECT_ROOT}/late.ts`]: withTokens('export const late = 1;\n', 25),
+    });
+    const bundle = await builder.build(
+      [{ kind: 'directory', absolutePath: `${PROJECT_ROOT}/dir` }, file(`${PROJECT_ROOT}/late.ts`)],
+      options({ maxTotalTokens: 50 }),
+    );
+    // The directory walk hits the global budget; the directly named file
+    // still wins (explicit picks pass no budget gate).
+    expect(bundle.files.map((f) => f.path)).toEqual(['dir/f1.ts', 'dir/f2.ts', 'late.ts']);
+    expect(bundle.skipped).toHaveLength(0);
+  });
 });

@@ -195,4 +195,19 @@ describe('TypeScriptImportStrategy alias context', () => {
     expect(paths[0]).toBe(nodePath.resolve(`${PROJECT_ROOT}/app/b`));
     expect(paths.some((p) => p.includes('components'))).toBe(false);
   });
+  it('resolves overlapping patterns by specificity, not declaration order (review fix R3)', () => {
+    const map = parseTsconfigAliases(
+      JSON.stringify({
+        compilerOptions: { paths: { '@/*': ['first/*'], '@/special/*': ['second/*'] } },
+      }),
+      PROJECT_ROOT,
+    );
+    expect(map).toBeDefined();
+    // tsc picks the pattern with the longest literal prefix before `*`,
+    // regardless of key order.
+    const specialized = matchAlias(map as NonNullable<typeof map>, '@/special/thing');
+    expect(specialized).toContain(nodePath.resolve(PROJECT_ROOT, 'second/thing'));
+    const ordinary = matchAlias(map as NonNullable<typeof map>, '@/other');
+    expect(ordinary).toContain(nodePath.resolve(PROJECT_ROOT, 'first/other'));
+  });
 });

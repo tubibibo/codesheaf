@@ -58,3 +58,8 @@ API integration would mean weight and dependencies this project refuses
 - Candidate volume grows slightly (each mapped specifier probes the usual
   extension/index variants), but candidates that do not exist are silent
   misses by design, so there is no new user-facing noise.
+- **Match order follows tsc, not declaration order** (post-review note):
+  tsc resolves a specifier against `paths` by specificity — the pattern
+  with the longest literal prefix before its `*` wins. `matchAlias`
+  therefore sorts patterns by that specificity (stable, so ties keep
+  declaration order) instead of iterating the parsed key order.

@@ -53,8 +53,7 @@ export class InMemoryFileSystem implements FileSystemPort {
   async readText(absolutePath: string, maxBytes: number): Promise<FileReadResult> {
     const value = this.files.get(normalizePath(absolutePath));
     if (value === undefined) return { ok: false, reason: 'not-found' };
-    const bytes =
-      typeof value === 'string' ? Buffer.from(value, 'utf-8') : Buffer.from(value.buffer);
+    const bytes = typeof value === 'string' ? Buffer.from(value, 'utf-8') : Buffer.from(value);
     if (bytes.byteLength > maxBytes) return { ok: false, reason: 'too-large' };
     const utf16 = decodeUtf16ByBom(bytes);
     if (utf16 !== undefined) return { ok: true, content: utf16 };

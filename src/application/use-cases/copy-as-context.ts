@@ -10,7 +10,7 @@ import { BundleError } from '../../core/domain/errors';
 import type { ClipboardPort, ConfigPort, LoggerPort, NotificationPort } from '../../core/ports';
 import type { BundleBuilder } from '../../core/services/bundle-builder';
 import { scanText, type SecretFinding } from '../../core/services/secret-scanner';
-import { formatTokenCount } from '../../core/utils/format';
+import { capRows, formatTokenCount } from '../../core/utils/format';
 
 export interface CopyUseCaseDeps {
   readonly builder: BundleBuilder;
@@ -32,6 +32,14 @@ export interface CopyResult {
   readonly estimatedTokens: number;
   readonly skippedCount: number;
 }
+
+/**
+ * The one action that lets a flagged bundle through. The confirm port
+ * resolves action *labels*, so this constant is the single place where the
+ * button text doubles as behavior (review fix R9): any other return value —
+ * including `undefined` from a dismissed dialog — cancels the copy.
+ */
+const COPY_ANYWAY_ACTION = 'Copy anyway';
 
 /**
  * Use case: weave the given inputs into a bundle and copy the rendered
@@ -65,14 +73,15 @@ export async function copyAsContext(
     if (options.secretScan === 'warn') {
       const findings = collectSecretFindings(bundle.files);
       if (findings.length > 0) {
+        // Logged before the question, on every path (review fix R5): the
+        // output channel keeps each finding inspectable whether the user
+        // proceeds, cancels, or dismisses the dialog.
+        deps.logger.warn(`secret findings: ${describeSecretFindings(findings)}`);
         const choice = await deps.notifier.confirm(
           `CodeSheaf: ${summarizeSecretFindings(findings, 'bundle')}. Copy anyway?`,
-          ['Copy anyway', 'Cancel'],
+          [COPY_ANYWAY_ACTION, 'Cancel'],
         );
-        if (choice !== 'Copy anyway') {
-          // Same contract as skip details: the output channel keeps every
-          // finding inspectable, the toast stays short.
-          deps.logger.warn(`secret findings: ${describeSecretFindings(findings)}`);
+        if (choice !== COPY_ANYWAY_ACTION) {
           deps.notifier.showWarning(
             'CodeSheaf: nothing was copied. Run Preview Context Bundle to inspect the flagged lines first.',
           );
@@ -122,14 +131,15 @@ export function resolveOptions(base: BundleOptions, overrides: CopyOverrides): B
   return options;
 }
 
-/** How many skip entries are spelled out before the log switches to a count. */
-const SKIP_LOG_LIMIT = 50;
+/** How many entries are spelled out before a log line switches to a count. */
+const LOG_LIMIT = 50;
 
-/** `reason path, reason path, …` — truncated so huge directory picks stay sane. */
+/** `reason path, reason path, …` — capped so huge directory picks stay sane. */
 export function describeSkips(skipped: readonly SkippedEntry[]): string {
-  const entries = skipped.map((entry) => `${entry.reason} ${entry.path}`);
-  if (entries.length <= SKIP_LOG_LIMIT) return entries.join(', ');
-  return `${entries.slice(0, SKIP_LOG_LIMIT).join(', ')} …and ${entries.length - SKIP_LOG_LIMIT} more`;
+  return describeCapped(
+    skipped.map((entry) => `${entry.reason} ${entry.path}`),
+    LOG_LIMIT,
+  );
 }
 
 /** A {@link SecretFinding} pinned to the bundle file it came from. */
@@ -163,14 +173,19 @@ export function summarizeSecretFindings(
   return `${findings.length} possible secret(s) in this ${where} (${labels}; first: ${at})`;
 }
 
-/** How many secret findings are spelled out before the log switches to a count. */
-const SECRET_LOG_LIMIT = 50;
-
 /** `path:line ruleId, …` — same detail style (and cap) as {@link describeSkips}. */
 export function describeSecretFindings(findings: readonly SecretFileFinding[]): string {
-  const entries = findings.map((finding) => `${finding.path}:${finding.line} ${finding.ruleId}`);
-  if (entries.length <= SECRET_LOG_LIMIT) return entries.join(', ');
-  return `${entries.slice(0, SECRET_LOG_LIMIT).join(', ')} …and ${entries.length - SECRET_LOG_LIMIT} more`;
+  return describeCapped(
+    findings.map((finding) => `${finding.path}:${finding.line} ${finding.ruleId}`),
+    LOG_LIMIT,
+  );
+}
+
+/** Joins capped detail rows: the first `limit` entries, then a total count. */
+function describeCapped(entries: readonly string[], limit: number): string {
+  const capped = capRows(entries, limit);
+  if (capped.hidden === 0) return capped.rows.join(', ');
+  return `${capped.rows.join(', ')} …and ${capped.hidden} more`;
 }
 
 export function describe(error: unknown): string {

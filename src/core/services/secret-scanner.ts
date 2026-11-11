@@ -56,7 +56,7 @@ export const SECRET_RULES: readonly SecretRule[] = [
   {
     id: 'private-key-block',
     label: 'Private key block',
-    pattern: /-----BEGIN (RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY( BLOCK)?-----/,
+    pattern: /-----BEGIN (RSA |EC |OPENSSH |PGP |DSA |ENCRYPTED )?PRIVATE KEY( BLOCK)?-----/,
   },
   {
     id: 'github-token',
@@ -93,19 +93,37 @@ export const SECRET_RULES: readonly SecretRule[] = [
   {
     id: 'generic-credential-assignment',
     label: 'Credential-like assignment',
+    // The keyword family is followed by a *bounded* name continuation. The
+    // original `(?:_?[A-Za-z0-9]*)*` shape was an ambiguous nested quantifier
+    // and could backtrack catastrophically (a 128-char run without `=`
+    // froze the scan for minutes — review finding R1); a single bounded
+    // quantifier is linear and matches the same name shapes.
     pattern:
-      /(?:API_KEY|APIKEY|SECRET|TOKEN|PASSWORD|PASSWD|ACCESS_KEY)(?:_?[A-Za-z0-9]*)*\s*[=:]\s*["']?([A-Za-z0-9+/_-]{16,})["']?/,
+      /(?:API_KEY|APIKEY|SECRET|TOKEN|PASSWORD|PASSWD|ACCESS_KEY)[A-Za-z0-9_]{0,48}\s*[=:]\s*["']?([A-Za-z0-9+/_-]{16,})["']?/,
     placeholderGroup: 1,
   },
 ];
 
-/** 1-based line number of the character at `index` in `text`. */
-function lineAt(text: string, index: number): number {
-  let line = 1;
-  for (let i = 0; i < index; i++) {
-    if (text.charCodeAt(i) === 10 /* \n */) line++;
+/** 1-based line starts (offset of each line's first character) for O(log n) line lookup. */
+function lineStarts(text: string): readonly number[] {
+  const starts: number[] = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) === 10 /* \n */) starts.push(i + 1);
   }
-  return line;
+  return starts;
+}
+
+/** 1-based line number of the character at `index`, via the precomputed table. */
+function lineAt(starts: readonly number[], index: number): number {
+  let lo = 0;
+  let hi = starts.length - 1;
+  while (lo < hi) {
+    const mid = lo + Math.ceil((hi - lo) / 2);
+    const start = starts[mid];
+    if (start === undefined || start <= index) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo + 1;
 }
 
 /**
@@ -117,6 +135,7 @@ function lineAt(text: string, index: number): number {
 export function scanText(text: string): SecretFinding[] {
   const seen = new Set<string>();
   const findings: { finding: SecretFinding; ruleIndex: number }[] = [];
+  const starts = lineStarts(text);
   for (const [ruleIndex, rule] of SECRET_RULES.entries()) {
     // Rule patterns are declared without flags (stateless/shared); each scan
     // derives its own global copy so `lastIndex` can never leak between calls.
@@ -127,7 +146,7 @@ export function scanText(text: string): SecretFinding[] {
         if (group === undefined || isPlaceholderValue(group)) continue;
       }
       const index = match.index ?? 0;
-      const line = lineAt(text, index);
+      const line = lineAt(starts, index);
       const key = `${rule.id}:${line}`;
       if (seen.has(key)) continue;
       seen.add(key);

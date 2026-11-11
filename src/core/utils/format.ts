@@ -10,3 +10,16 @@ export function formatTokenCount(tokens: number): string {
   const m = tokens / 1_000_000;
   return `~${Math.round(m * 10) / 10}M`;
 }
+
+/**
+ * Caps a detail list for logs and rendered sections: the first `limit` rows
+ * plus how many were hidden. One helper for the three "cap at 50" surfaces —
+ * skip logs, secret-finding logs, and the preview's skipped section.
+ */
+export function capRows<T>(
+  rows: readonly T[],
+  limit: number,
+): { rows: readonly T[]; hidden: number } {
+  if (rows.length <= limit) return { rows, hidden: 0 };
+  return { rows: rows.slice(0, limit), hidden: rows.length - limit };
+}

@@ -1,6 +1,12 @@
 import type { BundleFormat, BundledFile, SkippedEntry } from '../domain/bundle';
-import { escapeXmlAttribute, toCdata, longestBacktickRun, withLineNumbers } from '../utils/text';
-import { formatTokenCount } from '../utils/format';
+import {
+  escapeXmlAttribute,
+  normalizeNewlines,
+  toCdata,
+  longestBacktickRun,
+  withLineNumbers,
+} from '../utils/text';
+import { capRows, formatTokenCount } from '../utils/format';
 
 /** How many skipped entries are listed before the section switches to a count. */
 const SKIPPED_SECTION_LIMIT = 50;
@@ -49,13 +55,7 @@ function skippedRows(skipped: readonly SkippedEntry[]): {
   rows: readonly SkippedEntry[];
   hidden: number;
 } {
-  if (skipped.length <= SKIPPED_SECTION_LIMIT) {
-    return { rows: skipped, hidden: 0 };
-  }
-  return {
-    rows: skipped.slice(0, SKIPPED_SECTION_LIMIT),
-    hidden: skipped.length - SKIPPED_SECTION_LIMIT,
-  };
+  return capRows(skipped, SKIPPED_SECTION_LIMIT);
 }
 
 function totalTokens(files: readonly BundledFile[]): number {
@@ -92,15 +92,27 @@ function renderMarkdown(input: RenderInput): string {
 }
 
 /**
+ * The header to render: `undefined` when unset or whitespace-only (the
+ * manifest's "Leave empty" covers a stray space too, probe finding F1),
+ * with CRLF/CR endings normalized like file content (F2).
+ */
+function headerOf(taskHeader: string | undefined): string | undefined {
+  if (taskHeader === undefined) return undefined;
+  const normalized = normalizeNewlines(taskHeader);
+  return normalized.trim().length > 0 ? normalized : undefined;
+}
+
+/**
  * Renders the task header as a quote block, one `> ` prefix per line. The
  * prefix (not escaping) is what keeps arbitrary user text contained: even a
  * line of backticks stays inside the quote rather than opening a fence that
  * swallows the rest of the bundle.
  */
 function appendMarkdownTaskHeader(parts: string[], taskHeader: string | undefined): void {
-  if (taskHeader === undefined || taskHeader.length === 0) return;
+  const header = headerOf(taskHeader);
+  if (header === undefined) return;
   parts.push('');
-  for (const line of taskHeader.split('\n')) {
+  for (const line of header.split('\n')) {
     parts.push(line.length > 0 ? `> ${line}` : '>');
   }
 }
@@ -159,9 +171,10 @@ function renderXml(input: RenderInput): string {
   lines.push(
     `<codesheaf generator="${escapeXmlAttribute(generator)}" files="${files.length}" estimated_tokens="${totalTokens(files)}">`,
   );
-  if (input.taskHeader !== undefined && input.taskHeader.length > 0) {
+  const xmlHeader = headerOf(input.taskHeader);
+  if (xmlHeader !== undefined) {
     // CDATA defuses `]]>` and friends, same as file content below.
-    lines.push(`  <task>${toCdata(input.taskHeader)}</task>`);
+    lines.push(`  <task>${toCdata(xmlHeader)}</task>`);
   }
   if (includeTree && tree.length > 0) {
     lines.push(`  <tree>${toCdata(tree)}</tree>`);
@@ -200,10 +213,16 @@ function renderPlain(input: RenderInput): string {
   parts.push(
     `CodeSheaf Context Bundle — ${files.length} file(s) · ~${formatTokenCount(totalTokens(files))} tokens · ${generator}`,
   );
-  if (input.taskHeader !== undefined && input.taskHeader.length > 0) {
-    // Embedded in the title's separator section, so the task is the first
-    // thing after the header — and impossible to confuse with file content.
-    parts.push('TASK:', input.taskHeader);
+  const plainHeader = headerOf(input.taskHeader);
+  if (plainHeader !== undefined) {
+    // Embedded right after the title. Every line gets a `| ` prefix: the
+    // task text is arbitrary user input, and an unprefixed line like
+    // `FILE: x.ts` or a full-width separator rule could forge structural
+    // rows inside the plain format (review fix R4).
+    parts.push('TASK:');
+    for (const line of plainHeader.split('\n')) {
+      parts.push(`| ${line}`);
+    }
   }
   parts.push(separator);
   parts.push('');

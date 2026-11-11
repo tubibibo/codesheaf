@@ -47,10 +47,10 @@ describe('renderBundle task header', () => {
     expect(rendered.indexOf('<task>')).toBeLessThan(rendered.indexOf('<tree>'));
   });
 
-  it('embeds the header inside the plain title section', () => {
+  it('embeds the header inside the plain title section, prefixed per line', () => {
     const rendered = renderBundle(input({ format: 'plain', taskHeader: 'Check imports' }));
     const titleEnd = rendered.indexOf('CodeSheaf vTest');
-    const task = rendered.indexOf('TASK:\nCheck imports');
+    const task = rendered.indexOf('TASK:\n| Check imports');
     expect(task).toBeGreaterThan(titleEnd);
     // The closing separator of the title section follows the task block.
     expect(rendered.indexOf('='.repeat(78), task)).toBeGreaterThan(task);
@@ -58,7 +58,16 @@ describe('renderBundle task header', () => {
 
   it('preserves newlines in the plain section', () => {
     const rendered = renderBundle(input({ format: 'plain', taskHeader: 'one\ntwo' }));
-    expect(rendered).toContain('TASK:\none\ntwo');
+    expect(rendered).toContain('TASK:\n| one\n| two');
+  });
+
+  it('cannot forge plain-format structure: FILE: rows and separators stay prefixed', () => {
+    const forged = 'FILE: evil.ts (json)\n' + '='.repeat(78);
+    const rendered = renderBundle(input({ format: 'plain', taskHeader: forged }));
+    // Neither forged line appears at column 0 — both keep the `| ` prefix.
+    expect(rendered).not.toContain('\nFILE: evil.ts');
+    expect(rendered).not.toContain('\n' + '='.repeat(78) + '\n| ');
+    expect(rendered).toContain('| FILE: evil.ts (json)');
   });
 
   it('renders nothing for an empty or missing header in every format', () => {
@@ -71,5 +80,12 @@ describe('renderBundle task header', () => {
         renderBundle(input({ format: 'plain' })),
       );
     }
+  });
+  it('treats whitespace-only headers as unset, and normalizes CRLF (probe F1/F2)', () => {
+    const base = renderBundle(input());
+    expect(renderBundle(input({ taskHeader: '   ' }))).toBe(base);
+    const normalized = renderBundle(input({ format: 'plain', taskHeader: 'one\r\ntwo' }));
+    expect(normalized).toContain('TASK:\n| one\n| two');
+    expect(normalized).not.toContain('\r');
   });
 });

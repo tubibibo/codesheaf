@@ -48,9 +48,9 @@ exactly the local dependencies that matter."**
   editor tab instead of the clipboard; the preview also lists every skipped
   file and why, so you can review what an LLM would (and would not) receive.
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
-  the core enforced by ESLint; 155 unit tests; ~96% statement coverage over
+  the core enforced by ESLint; 270+ unit tests; ~97% statement coverage over
   the core/application layers;
-  **zero runtime npm dependencies** (the .vsix is ~65 KB).
+  **zero runtime npm dependencies** (the .vsix is ~83 KB).
 
 ## 🚀 Install
 

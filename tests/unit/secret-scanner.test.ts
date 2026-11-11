@@ -31,6 +31,12 @@ describe('scanText rules', () => {
       'Private key block',
       1,
     );
+    expectSingle(
+      '-----BEGIN ENCRYPTED PRIVATE KEY-----',
+      'private-key-block',
+      'Private key block',
+      1,
+    );
     expect(scanText('-----BEGIN CERTIFICATE-----')).toHaveLength(0);
     expect(scanText('-----BEGIN PUBLIC KEY-----')).toHaveLength(0);
   });
@@ -149,6 +155,26 @@ describe('scanText reporting', () => {
   it('finds nothing in innocent text', () => {
     expect(scanText('export const a = 1;\nimport { b } from "./b";\n')).toHaveLength(0);
     expect(scanText('')).toHaveLength(0);
+  });
+
+  it('scans pathological long keyword runs without catastrophic backtracking', () => {
+    // The pre-fix generic rule used `(?:_?[A-Za-z0-9]*)*`, an ambiguous
+    // nested quantifier: a ~128-char keyword-shaped run with no assignment
+    // froze the scan for minutes (review finding R1). The bounded shape
+    // must finish fast and find nothing.
+    const run = `${'TOKEN'}${'SECTION_A'.repeat(12)}${'SECTION_B'.repeat(12)}`;
+    const started = Date.now();
+    const findings = scanText(`${run}\n${'PASSWORD'}${'_X'.repeat(80)}`);
+    const elapsed = Date.now() - started;
+    expect(findings).toHaveLength(0);
+    expect(elapsed).toBeLessThan(2000);
+  });
+
+  it('still flags bounded keyword-shaped names after the quantifier was bounded', () => {
+    const findings = scanText('PASSWORD_ID_2 = "0123456789abcdef012345"');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.ruleId).toBe('generic-credential-assignment');
+    expect(findings[0]?.line).toBe(1);
   });
 
   it('declares exactly the documented rule ids', () => {

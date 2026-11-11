@@ -66,6 +66,11 @@ export default tseslint.config(
     // Test-double idioms the type-checked preset cannot model: fakes that
     // resolve without awaiting, `expect(spy)` method access, and vitest's
     // `expect.any` (typed `any`). Everything else stays type-checked.
+    // Evaluated blind spots: `unbound-method` off means destructured fake
+    // methods that rely on `this` (e.g. InMemoryFileSystem) would not be
+    // flagged — keep fakes used via `instance.method(...)` form;
+    // `no-unsafe-assignment` off means `any` from `expect.any` can spread
+    // within a test file but not into src (src keeps the rule at error).
     files: ['tests/**/*.ts'],
     rules: {
       'no-console': 'off',

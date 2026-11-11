@@ -5,6 +5,7 @@ import { formatTokenCount } from '../../core/utils/format';
 import {
   collectSecretFindings,
   describe,
+  describeSecretFindings,
   resolveOptions,
   summarizeSecretFindings,
   type CopyOverrides,
@@ -64,6 +65,11 @@ export async function previewAsContext(
     if (options.secretScan === 'warn') {
       const findings = collectSecretFindings(bundle.files);
       if (findings.length > 0) {
+        // Same output-channel contract as the copy path (review fix R5):
+        // the finding list is inspectable even when the preview proceeds.
+        deps.logger.warn(
+          `secret findings: ${describeSecretFindings(findings)} (preview, not blocked)`,
+        );
         deps.notifier.showWarning(
           `CodeSheaf: ${summarizeSecretFindings(findings, 'preview')}. Copying will still ask for confirmation.`,
         );

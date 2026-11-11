@@ -90,10 +90,11 @@ An empty value renders nothing.
   `limit-reached`. The `encoding` reason covers files whose bytes are not
   valid UTF-8 (and are not UTF-16) — bundling them would silently replace
   every invalid sequence with U+FFFD mojibake, so they are skipped instead.
-- Every skip and its reason is logged to the **CodeSheaf** output channel,
-  and previews render a trailing _Skipped Files_ section, so "why did this
-  file not make it in?" is always answerable. Clipboard copies keep the
-  bundle text clean (the count appears in the toast; details in the output
+- Skips and their reasons are logged to the **CodeSheaf** output channel
+  (the first 50 entries, then a total count), and previews render a
+  trailing _Skipped Files_ section with the same cap, so "why did this file
+  not make it in?" is always answerable. Clipboard copies keep the bundle
+  text clean (the count appears in the toast; details in the output
   channel).
 
 ## Import following
@@ -146,8 +147,9 @@ credentials (`codesheaf.secretScan`, default `warn`; see
   many findings, which rules, and the first location (e.g.
   `src/config.ts:14`). **Copy anyway** proceeds; **Cancel** (or dismissing
   the dialog) copies nothing and points you at **Preview** to inspect the
-  flagged lines. Every finding is also written to the CodeSheaf output
-  channel as `path:line ruleId`.
+  flagged lines. Findings are also written to the CodeSheaf output channel
+  as `path:line ruleId` — on every path, before the dialog appears (the
+  first 50 entries, then a total count).
 - **`off`** — no scanning at all.
 
 Previews never block: they are the review surface, so a flagged bundle still
