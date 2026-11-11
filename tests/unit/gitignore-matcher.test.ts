@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { IgnoreMatcher } from '../../src/core/services/ignore/gitignore-matcher';
+import { intBelow, makeRandom, pick } from '../support/seeded-random';
 
 describe('IgnoreMatcher', () => {
   it('matches unanchored directory names at any depth', () => {
@@ -72,5 +73,53 @@ describe('IgnoreMatcher', () => {
     const matcher = IgnoreMatcher.fromPatterns(['a+b.txt']);
     expect(matcher.isIgnored('a+b.txt')).toBe(true);
     expect(matcher.isIgnored('aab.txt')).toBe(false);
+  });
+
+  describe('invariants (seeded property sweep, see tests/support/seeded-random.ts)', () => {
+    // Deliberately weird atoms: unbalanced brackets, stray negations and
+    // glob stars that never form valid patterns — the matcher must decide
+    // *something* deterministic, never throw and never flip between calls.
+    const PATTERN_ATOMS = [
+      'src',
+      'a',
+      'b',
+      '*.log',
+      '/',
+      '**',
+      '?',
+      '!',
+      '[',
+      ']',
+      '.ts',
+      'node_modules',
+      'build',
+      '#',
+    ];
+    const PATH_ATOMS = ['src', 'a', 'b', 'x.log', 'x.ts', '/', 'build', '.'];
+
+    it('isIgnored never throws and is idempotent across a random pattern/path matrix', () => {
+      const random = makeRandom(20261111);
+      for (let sample = 0; sample < 250; sample += 1) {
+        const patterns: string[] = [];
+        for (let count = intBelow(random, 5); count > 0; count -= 1) {
+          let pattern = '';
+          for (let parts = intBelow(random, 4) + 1; parts > 0; parts -= 1) {
+            pattern += pick(random, PATTERN_ATOMS);
+          }
+          patterns.push(pattern);
+        }
+        const path = Array.from({ length: intBelow(random, 4) + 1 }, () =>
+          pick(random, PATH_ATOMS),
+        ).join('');
+
+        const matcher = IgnoreMatcher.fromPatterns(patterns);
+        const results: boolean[] = [];
+        expect(() => results.push(matcher.isIgnored(path))).not.toThrow();
+        // Same query, same answer — no hidden state between calls.
+        expect(matcher.isIgnored(path)).toBe(results[0]);
+        // A fresh matcher over the same patterns decides identically.
+        expect(IgnoreMatcher.fromPatterns(patterns).isIgnored(path)).toBe(results[0]);
+      }
+    });
   });
 });
