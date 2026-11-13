@@ -5,11 +5,17 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Both require Node >= 22; the project keeps a Node 20 baseline.
+      # These require Node >= 22; the project keeps a Node 20 baseline.
+      - dependency-name: vitest
+        versions: ['5.x']
       - dependency-name: '@vitest/coverage-v8'
         versions: ['5.x']
       - dependency-name: '@vscode/vsce'
         versions: ['4.x']
+      # Node 26 types would typecheck against APIs the Node 20 baseline lacks;
+      # vitest 4 also peers on ^20.19 || ^22.12 || >=24.
+      - dependency-name: '@types/node'
+        versions: ['25.x', '26.x']
       # TS 7 breaks typescript-eslint 8 (ERESOLVE); revisit when the peer
       # range widens.
       - dependency-name: typescript
