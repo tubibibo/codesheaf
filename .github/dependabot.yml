@@ -4,6 +4,16 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Both require Node >= 22; the project keeps a Node 20 baseline.
+      - dependency-name: "@vitest/coverage-v8"
+        versions: ["5.x"]
+      - dependency-name: "@vscode/vsce"
+        versions: ["4.x"]
+      # TS 7 breaks typescript-eslint 8 (ERESOLVE); revisit when the peer
+      # range widens.
+      - dependency-name: typescript
+        versions: ["7.x"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
