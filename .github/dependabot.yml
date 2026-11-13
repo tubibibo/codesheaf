@@ -12,10 +12,10 @@ updates:
         versions: ['5.x']
       - dependency-name: '@vscode/vsce'
         versions: ['4.x']
-      # Node 26 types would typecheck against APIs the Node 20 baseline lacks;
-      # vitest 4 also peers on ^20.19 || ^22.12 || >=24.
+      # Types track the Node 22 CI job; anything newer would let code
+      # typecheck against APIs the Node 20 baseline does not have.
       - dependency-name: '@types/node'
-        versions: ['25.x', '26.x']
+        versions: ['>=23.0.0']
       # Must track engines.vscode (^1.96.0): newer typings would let the code
       # call APIs that do not exist in the oldest host we claim to support.
       - dependency-name: '@types/vscode'

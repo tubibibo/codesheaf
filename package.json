@@ -237,5 +237,6 @@
     "vite": "^6.4.5",
     "vitest": "^4.1.12"
   },
-  "private": true
+  "private": true,
+  "icon": "media/icon.png"
 }
