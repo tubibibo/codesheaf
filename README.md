@@ -48,20 +48,23 @@ exactly the local dependencies that matter."**
   editor tab instead of the clipboard; the preview also lists every skipped
   file and why, so you can review what an LLM would (and would not) receive.
 - 🧪 **Trustworthy core** — hexagonal architecture with the `vscode` ban on
-  the core enforced by ESLint; 270+ unit tests; ~97% statement coverage over
-  the core/application layers;
-  **zero runtime npm dependencies** (the .vsix is ~83 KB).
+  the core enforced by ESLint; 280 unit tests; 95.8% statement and 97.5% line
+  coverage over the core/application layers;
+  **zero runtime npm dependencies** (the .vsix is ~94 KB).
 
 ## 🚀 Install
 
-**Fastest path — download a ready-made VSIX from CI**: open the repo's
-[Actions](https://github.com/tubibibo/codesheaf/actions) tab, click the latest
-green run on `main`, and download the `codesheaf-vsix` artifact (GitHub login
-required), then:
+**Fastest path — install the published VSIX**: download the `.vsix` attached
+to the [latest release](https://github.com/tubibibo/codesheaf/releases), then:
 
 ```bash
 code --install-extension codesheaf-<version>.vsix
 ```
+
+**Or take the newest build from CI** (runs ahead of the last release): open the
+repo's [Actions](https://github.com/tubibibo/codesheaf/actions) tab, click the
+latest green run on `main`, and download the `codesheaf-vsix` artifact (GitHub
+login required).
 
 **Build the VSIX locally** (no marketplace account needed):
 

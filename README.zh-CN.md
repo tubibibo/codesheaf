@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **把文件、选区及其导入依赖打包成 LLM 就绪的上下文——就在编辑器里完成。**
-零运行时依赖，核心层单元测试语句覆盖率约 97%。
+零运行时依赖，核心层单元测试语句覆盖率 95.8%、行覆盖率 97.5%。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -23,15 +23,17 @@ _Sheaf_（麦捆）即"把散落的秸秆捆成一束"。CodeSheaf 把你正在�
 - 🛡️ **安全的文件挑选**——遵守 `.gitignore` 与自定义排除规则；二进制、非 UTF-8 编码与超限文件按精确原因跳过；显式选择的文件永远保留（你点名要的，就给你）。
 - 🛡️ **粘贴前密钥警告**——零依赖的保守扫描，识别常见凭据模式（AWS/GitHub/Slack/Google/OpenAI 密钥、私钥块、疑似凭据赋值），命中的打包结果在进入剪贴板前弹窗确认；误报只需一次“仍然复制”即可放行。
 - 🔍 **粘贴前预览**——把最终打包文本在单独的编辑器标签页中打开检查，而不是直接进剪贴板；预览会同时列出每个被跳过的文件及原因，方便确认 LLM 到底会收到什么。
-- 🧪 **可信的核心**——六边形架构，ESLint 强制核心层禁用 `vscode`；270+ 个单元测试；core/application 层语句覆盖率约 97%；**零运行时 npm 依赖**（.vsix 仅约 83 KB）。
+- 🧪 **可信的核心**——六边形架构，ESLint 强制核心层禁用 `vscode`；280 个单元测试；core/application 层语句覆盖率 95.8%、行覆盖率 97.5%；**零运行时 npm 依赖**（.vsix 约 94 KB）。
 
 ## 🚀 安装
 
-**最快路径——从 CI 下载现成 VSIX**：打开仓库的 [Actions](https://github.com/tubibibo/codesheaf/actions) 页，点进 `main` 上最近一次绿色运行，下载 `codesheaf-vsix` 产物（需 GitHub 登录），然后：
+**最快路径——安装已发布的 VSIX**：从[最新 Release](https://github.com/tubibibo/codesheaf/releases) 下载附带的 `.vsix`，然后：
 
 ```bash
 code --install-extension codesheaf-<version>.vsix
 ```
+
+**或取 CI 上更新的构建**（可能领先于最近一次发布）：打开仓库的 [Actions](https://github.com/tubibibo/codesheaf/actions) 页，点进 `main` 上最近一次绿色运行，下载 `codesheaf-vsix` 产物（需 GitHub 登录）。
 
 **本地打包 VSIX**（无需市场账号）：
 
