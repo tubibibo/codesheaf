@@ -16,6 +16,10 @@ updates:
       # vitest 4 also peers on ^20.19 || ^22.12 || >=24.
       - dependency-name: '@types/node'
         versions: ['25.x', '26.x']
+      # Must track engines.vscode (^1.96.0): newer typings would let the code
+      # call APIs that do not exist in the oldest host we claim to support.
+      - dependency-name: '@types/vscode'
+        versions: ['>=1.97.0']
       # TS 7 breaks typescript-eslint 8 (ERESOLVE); revisit when the peer
       # range widens.
       - dependency-name: typescript
