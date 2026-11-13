@@ -236,5 +236,6 @@
     "typescript-eslint": "^8.20.0",
     "vite": "^6.4.5",
     "vitest": "^4.1.12"
-  }
+  },
+  "private": true
 }
